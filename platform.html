@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wortsprung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="wj.css">
+<style>
+/* Layout: one canvas stage with on-screen buttons for touch screens */
+.stage.tall { min-height: 520px; }
+.pad { position: absolute; bottom: 12px; display: none; gap: 10px; }
+.pad.l { left: 12px; } .pad.r { right: 12px; }
+.pad button {
+  width: 64px; height: 64px; border-radius: 16px; border: 1.5px solid var(--line); background: rgba(20, 26, 46, .8);
+  font: 700 24px/1 var(--f-display); color: var(--fg); touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.pad button.down { border-color: var(--gold); color: var(--gold); }
+@media (hover: none) { .playing .pad { display: flex; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">Wort<b>sprung</b><span>Platformer · RO / EN → DE</span></div>
+  <nav class="tabs" aria-label="Games">
+    <a class="tab" href="index.html">Shooter</a>
+    <a class="tab" href="tower.html">Tower</a>
+    <a class="tab on" href="platform.html" aria-current="page">Platformer</a>
+    <a class="tab" href="index.html#reg">Register</a>
+  </nav>
+</header>
+
+<main>
+  <div class="stage tall" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="pad l"><button data-k="l" aria-label="Left">◀</button><button data-k="r" aria-label="Right">▶</button></div>
+    <div class="pad r"><button data-k="j" aria-label="Jump">▲</button></div>
+
+    <div class="overlay" id="menu">
+      <h1>Wort<b>sprung</b></h1>
+      <p class="lede">Run, jump and learn. Golden scrolls teach you new words. Word gates block the way until you bump the block with the right German word.</p>
+      <div class="howto">
+        <div><strong>Golden scrolls</strong>Touch one to learn a new word: the Romanian or English meaning and its German.</div>
+        <div><strong>Word gates</strong>The prompt hangs over the gate. Jump into the block with the right German word to open it. A wrong block costs a heart.</div>
+        <div><strong>Shielded nouns</strong>Some gates then ask for the article: bump der, die or das.</div>
+        <div><strong>Hazards</strong>Stomp the crawlers, mind the gaps. Falling sends you back to the last flag.</div>
+      </div>
+      <div class="today" id="today"></div>
+      <div class="opts">
+        <label>Prompt language
+          <select id="set-lang"><option value="ro">Română</option><option value="en">English</option></select>
+        </label>
+        <label>New words per run
+          <select id="set-new"><option>3</option><option>5</option><option>8</option><option>12</option></select>
+        </label>
+        <label><input type="checkbox" id="set-voice"> Speak German</label>
+      </div>
+      <button class="big" id="btn-start">Start running</button>
+      <p class="keys">Move: ← → or A / D · Jump: Space, ↑ or W (hold to jump higher) · Close a card: Space or click · Pause: Esc</p>
+    </div>
+
+    <div class="overlay" id="over" hidden>
+      <h2 id="over-title">Finish</h2>
+      <div class="result-grid" id="over-stats"></div>
+      <div id="over-learned"></div>
+      <div id="over-weak"></div>
+      <div class="row-btns">
+        <button class="big" id="btn-again">Play again</button>
+        <button class="ghost" id="btn-menu">Menu</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="wj-core.js"></script>
+<script>
+"use strict";
+/* ---------- World constants (virtual pixels; the canvas scales to fit) ---------- */
+const VH = 540, S = 40, GY = 440;               // view height, tile, ground top
+const BLOCK_Y = GY - 160, BLOCK_H = 40, GAP = 56;
+const G = 2300, JUMP = 840, CUT = 320, MAXV = 280;
+const BAND = 64;                                // HUD band in screen pixels
+
+const cv = $("#cv"), ctx = cv.getContext("2d");
+let W = 960, H = 540, DPR = 1, sc = 1, VW = 960;
+let run = null, paused = false, last = performance.now(), gt = 0, shake = 0, cam = 0;
+let me, solids = [], gates = [], coins = [], foes = [], scrolls = [], flags = [], parts = [], floats = [];
+let keys = { l: false, r: false, j: false }, genX = 0;
+const stars = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random() * 0.7, z: Math.random() * 0.8 + 0.2 }));
+
+function resize() {
+  W = $("#stage").clientWidth;
+  H = Math.max(400, Math.min(640, window.innerHeight - 150));
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  sc = H / VH; VW = W / sc;
+  cv.width = W * DPR; cv.height = H * DPR; cv.style.height = H + "px";
+}
+window.addEventListener("resize", resize);
+
+/* ---------- Run ---------- */
+function startRun() {
+  if (!canPlay()) { toast("Switch on at least 4 words in the register to play."); return; }
+  audioOn();
+  const queue = buildQueue();
+  run = { queue, practice: queue.every(s => s.m === "retry"), lives: 5, score: 0, coins: 0, combo: 0, maxCombo: 0, ok: 0, bad: 0, artBad: 0,
+    learned: [], weak: new Set(), phase: "play", card: null, cp: 2 * S, gatesDone: 0, finishX: null,
+    done: 0, total: queue.filter(s => s.k === "test").length };
+  me = { x: 2 * S, y: GY - 44, w: 26, h: 44, vx: 0, vy: 0, on: false, face: 1, coyote: 0, buffer: 0, inv: 0, step: 0 };
+  solids = []; gates = []; coins = []; foes = []; scrolls = []; flags = []; parts = []; floats = [];
+  genX = 0; cam = 0; gt = 0; paused = false; keys = { l: false, r: false, j: false };
+  addGround(0, 8 * S); genX = 8 * S;
+  generate();
+  $("#menu").hidden = true; $("#over").hidden = true;
+  $("#stage").classList.remove("tall"); $("#stage").classList.add("playing");
+  resize();
+}
+
+function diff() { return Math.min(1, run.gatesDone / 12); }
+function addGround(x, w) { solids.push({ x, y: GY, w, h: VH - GY + 200, kind: "ground" }); }
+function addCoins(x, y, n) { for (let i = 0; i < n; i++) coins.push({ x: x + i * 30, y, ph: i * 0.6 }); }
+
+// Lay the level out a little ahead of the camera: a stretch to run, then the next scroll or gate.
+function generate() {
+  while (genX < cam + VW * 2 && run.finishX == null) {
+    if (run.queue.length) {
+      genStretch(12 + Math.random() * 6 + 8 * diff());
+      const s = run.queue.shift();
+      s.k === "intro" ? genScroll(s) : genGate(s);
+    } else if (gates.some(g => g.state !== "open")) genStretch(10); // a missed gate may still send a word back
+    else genFinish();
+  }
+}
+
+function genStretch(tiles) {
+  const d = diff(), end = genX + Math.round(tiles) * S;
+  let x = genX;
+  flags.push({ x: x + S, on: false });
+  addGround(x, 3 * S); x += 3 * S;
+  while (x < end) {
+    if (Math.random() < 0.35 + 0.35 * d) {
+      const gap = (2 + Math.round(Math.random() * (1 + d))) * S;
+      if (gap >= 3 * S && Math.random() < 0.6) { solids.push({ x: x + gap / 2 - S, y: GY - 90, w: 2 * S, h: 16, kind: "plat" }); addCoins(x + gap / 2 - 15, GY - 120, 2); }
+      x += gap;
+    }
+    const g = (3 + Math.floor(Math.random() * 5)) * S;
+    addGround(x, g);
+    if (g >= 5 * S && Math.random() < 0.2 + 0.55 * d) foes.push({ x: x + 2 * S, y: GY - 26, w: 30, h: 26, vx: (55 + 40 * d) * (Math.random() < .5 ? 1 : -1), minX: x + 4, maxX: x + g - 34, ph: 0 });
+    if (Math.random() < 0.3) { const px = x + S; solids.push({ x: px, y: GY - 130, w: 3 * S, h: 16, kind: "plat" }); addCoins(px + 15, GY - 160, 3); }
+    else if (Math.random() < 0.5) addCoins(x + S, GY - 40, Math.min(4, g / S - 2));
+    x += g;
+  }
+  genX = x;
+}
+
+function genScroll(s) {
+  addGround(genX, 7 * S);
+  scrolls.push({ x: genX + 3.5 * S, y: GY - 70, s, ph: 0 });
+  genX += 7 * S;
+}
+
+function blockWidth(text) { ctx.font = `700 17px ${FONT}`; return Math.max(96, ctx.measureText(text).width + 30); }
+
+function genGate(s) {
+  const g = { s, opts: options(s), armor: wantArmor(s), state: "word", graded: false, t0: null, reveal: false, blocks: [] };
+  s.armor = g.armor;
+  const items = g.opts.map(o => ({ text: g.armor ? bare(o.de) : o.de, val: o.id }));
+  const area = items.reduce((a, it) => a + blockWidth(it.text), 0) + GAP * (items.length - 1);
+  g.zone = Math.max(area, 3 * 96 + 2 * GAP);
+  g.x0 = genX; g.bx = genX + 4 * S; g.x1 = g.bx + g.zone + 3 * S;
+  addGround(genX, g.x1 - genX + 4 * S);
+  flags.push({ x: g.x0 + S, on: false });
+  g.bar = { x: g.x1, y: -400, w: 18, h: GY + 400, kind: "bar", g };
+  solids.push(g.bar);
+  layout(g, items);
+  gates.push(g);
+  genX = g.x1 + 4 * S;
+}
+function layout(g, items) {
+  g.blocks.forEach(b => b.gone = true);
+  const ws = items.map(it => blockWidth(it.text)), area = ws.reduce((a, b) => a + b, 0) + GAP * (items.length - 1);
+  let x = g.bx + (g.zone - area) / 2;
+  g.blocks = items.map((it, i) => { const b = { x, y: BLOCK_Y, w: ws[i], h: BLOCK_H, kind: "block", g, ...it, bumpT: 0 }; x += ws[i] + GAP; return b; });
+  solids.push(...g.blocks);
+}
+function genFinish() {
+  addGround(genX, 16 * S);
+  run.finishX = genX + 7 * S;
+  genX += 16 * S;
+}
+// A word to ask again: two features further down the road.
+function requeue(step) {
+  if (!step) return;
+  run.total++;
+  run.queue.splice(Math.min(run.queue.length, 2), 0, step);
+}
+
+/* ---------- Gates ---------- */
+function bump(b) {
+  const g = b.g;
+  b.bumpT = 0.18; sfx.bump();
+  if (g.state === "open" || b.gone) return;
+  if (g.t0 == null) g.t0 = gt;
+  const right = g.state === "word" ? b.val === g.s.w.id : b.val === gender(g.s.w.de);
+  if (!right) return wrongPick(g, b);
+  if (g.state === "word" && g.armor) {
+    g.state = "art"; g.reveal = false;
+    run.score += 60; floatText(b.x + b.w / 2, b.y - 10, "der · die · das?", COL.gold);
+    layout(g, ARTS.map(a => ({ text: a, val: a })));
+    burst(b.x + b.w / 2, b.y + b.h / 2, COL.shield, 18); sfx.crack();
+    return;
+  }
+  openGate(g, b);
+}
+
+function wrongPick(g, b) {
+  const why = g.state === "art" ? "article" : "word";
+  b.gone = true;
+  burst(b.x + b.w / 2, b.y + b.h / 2, COL.bad, 26); floatText(b.x + b.w / 2, b.y - 10, why === "article" ? "Wrong article" : "✗", COL.bad);
+  run.combo = 0; run.weak.add(g.s.w);
+  if (!g.graded) {
+    g.graded = true; run.bad++; run.done++;
+    if (why === "article") run.artBad++;
+    requeue(grade(g.s, false, { why, practice: run.practice }));
+  }
+  g.reveal = true; say(g.s.w.de);
+  hurt(true);
+}
+
+function openGate(g, b) {
+  g.state = "open"; g.bar.gone = true; g.openT = 0; run.gatesDone++;
+  burst(b.x + b.w / 2, b.y + b.h / 2, COL.ok, 30); burst(g.bar.x + 9, GY - 120, COL.bad, 20);
+  if (!g.graded) {
+    g.graded = true;
+    const rt = gt - (g.t0 ?? gt), n = g.armor ? 160 : 100;
+    run.ok++; run.done++; run.combo++; run.maxCombo = Math.max(run.maxCombo, run.combo);
+    const pts = n + run.combo * 20 + Math.max(0, Math.round((8000 - rt) / 40));
+    run.score += pts; floatText(b.x + b.w / 2, b.y - 14, "+" + pts, COL.ok, 20);
+    if (g.s.m === "learn2" && !run.practice) run.learned.push(g.s.w);
+    requeue(grade(g.s, true, { rt, practice: run.practice, fast: 5000, slow: 14000 }));
+  } else floatText(b.x + b.w / 2, b.y - 14, "Gate open", COL.muted);
+  say(g.s.w.de); sfx.ok();
+}
+
+/* ---------- Damage ---------- */
+function hurt(stay) {
+  if (me.inv > 0 && !stay) return;
+  run.lives--; me.inv = 1.3; shake = 0.35; sfx.bad();
+  if (!stay) { me.vy = -420; me.vx = -me.face * 220; }
+  if (run.lives <= 0) { run.phase = "over"; run.endAt = gt + 1100; }
+}
+function respawn() {
+  run.lives--; shake = 0.3; sfx.bad();
+  if (run.lives <= 0) { run.phase = "over"; run.endAt = gt + 1100; return; }
+  Object.assign(me, { x: run.cp, y: GY - me.h - 1, vx: 0, vy: 0, inv: 1.3 });
+  floatText(me.x + 13, me.y - 20, "−1 ♥", COL.bad);
+}
+
+/* ---------- Effects ---------- */
+function burst(x, y, color, n = 18, spd = 220) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.283, v = spd * (0.3 + Math.random());
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.5 + Math.random() * 0.4, t: 0, c: color });
+  }
+}
+function floatText(x, y, text, c, size = 17) { floats.push({ x, y, text, c, t: 0, size }); }
+
+/* ---------- Update ---------- */
+function overlap(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+function collide(axis) {
+  for (const s of solids) {
+    if (s.gone || s.x > me.x + 60 || s.x + s.w < me.x - 60 || !overlap(me, s)) continue;
+    if (axis === "x") { if (me.vx > 0) me.x = s.x - me.w; else if (me.vx < 0) me.x = s.x + s.w; me.vx = 0; }
+    else if (me.vy > 0) { me.y = s.y - me.h; me.vy = 0; me.on = true; }
+    else if (me.vy < 0) { me.y = s.y + s.h; me.vy = 0; if (s.kind === "block") bump(s); }
+  }
+}
+
+function update(dt) {
+  gt += dt * 1000;
+  if (run.card) return;
+  const over = run.phase === "over";
+  // move
+  const dir = over ? 0 : (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
+  if (dir) { me.face = dir; me.vx += dir * (me.on ? 2400 : 1500) * dt; me.vx = Math.max(-MAXV, Math.min(MAXV, me.vx)); }
+  else { const f = (me.on ? 2200 : 500) * dt; me.vx = Math.abs(me.vx) <= f ? 0 : me.vx - Math.sign(me.vx) * f; }
+  me.coyote = me.on ? 0.1 : me.coyote - dt;
+  me.buffer -= dt;
+  if (me.buffer > 0 && me.coyote > 0 && !over) { me.vy = -JUMP; me.coyote = 0; me.buffer = 0; me.on = false; sfx.jump(); }
+  if (!keys.j && me.vy < -CUT) me.vy = -CUT; // short hop on a quick tap
+  me.vy = Math.min(1100, me.vy + G * dt);
+  me.x += me.vx * dt; collide("x");
+  me.on = false; me.y += me.vy * dt; collide("y");
+  me.x = Math.max(cam, me.x);
+  if (me.on && me.vx) me.step += dt * Math.abs(me.vx) / 30;
+  if (me.inv > 0) me.inv -= dt;
+  if (me.y > VH + 80 && !over) respawn();
+
+  // pickups and checkpoints
+  for (const c of coins) if (!c.taken && Math.abs(c.x - (me.x + 13)) < 20 && Math.abs(c.y - (me.y + 22)) < 30) {
+    c.taken = true; run.coins++; run.score += 10; sfx.coin(); burst(c.x, c.y, COL.gold, 6, 120);
+  }
+  for (const f of flags) if (!f.on && me.x > f.x) { f.on = true; run.cp = f.x; }
+  for (const sc2 of scrolls) if (!sc2.taken && Math.abs(sc2.x - (me.x + 13)) < 30 && me.y + me.h > sc2.y - 20) {
+    sc2.taken = true; run.card = { w: sc2.s.w }; introduce(sc2.s.w); say(sc2.s.w.de); sfx.gold();
+    burst(sc2.x, sc2.y, COL.gold, 30); keys.j = false; me.buffer = 0;
+  }
+  for (const g of gates) if (g.t0 == null && g.state !== "open" && me.x > g.x0 + 2 * S) g.t0 = gt;
+
+  // crawlers
+  for (const f of foes) {
+    if (f.dead) { f.dead += dt; continue; }
+    f.x += f.vx * dt; f.ph += dt * 8;
+    if (f.x < f.minX) { f.x = f.minX; f.vx = Math.abs(f.vx); }
+    if (f.x > f.maxX) { f.x = f.maxX; f.vx = -Math.abs(f.vx); }
+    if (!over && overlap(me, f)) {
+      if (me.vy > 0 && me.y + me.h - f.y < 20) {
+        f.dead = 0.001; me.vy = keys.j ? -JUMP * 0.85 : -480; run.score += 50;
+        floatText(f.x + 15, f.y - 10, "+50", COL.gold); burst(f.x + 15, f.y + 13, COL.die, 16); sfx.stomp();
+      } else hurt(false);
+    }
+  }
+  foes = foes.filter(f => !f.dead || f.dead < 0.4);
+
+  // camera, level ahead, cleanup behind
+  cam = Math.max(cam, me.x - VW * 0.35);
+  generate();
+  const behind = Math.min(cam - VW, run.cp - 300);
+  if (solids.length > 200) {
+    solids = solids.filter(s => s.x + s.w > behind);
+    coins = coins.filter(c => c.x > behind); flags = flags.filter(f => f.x > behind - 400); gates = gates.filter(g => g.x1 > behind);
+  }
+  for (const g of gates) { if (g.openT != null) g.openT += dt; g.blocks.forEach(b => { if (b.bumpT > 0) b.bumpT -= dt; }); }
+  if (!over && run.finishX != null && me.x > run.finishX) { run.phase = "won"; sfx.level(); return finish(true); }
+  if (over && gt >= run.endAt) finish(false);
+}
+
+function tickEffects(dt) {
+  for (const p of parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.95; p.vy = p.vy * 0.95 + 300 * dt; }
+  parts = parts.filter(p => p.t < p.life);
+  for (const f of floats) { f.t += dt; f.y -= 40 * dt; }
+  floats = floats.filter(f => f.t < 1);
+  if (shake > 0) shake -= dt;
+}
+
+/* ---------- Draw ---------- */
+function nextGate() { return gates.find(g => g.state !== "open" && g.x1 > me.x); }
+
+function draw(now) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.scale(sc, sc);
+  if (shake > 0) ctx.translate((Math.random() - .5) * 10 * shake, (Math.random() - .5) * 10 * shake);
+  // sky: stars and two layers of hills
+  for (const s of stars) {
+    const x = ((s.x * VW * 1.5 - cam * 0.1 * s.z) % (VW * 1.5) + VW * 1.5) % (VW * 1.5);
+    ctx.fillStyle = `rgba(233,236,245,${0.15 + s.z * 0.4})`; ctx.fillRect(x, s.y * VH, s.z * 2, s.z * 2);
+  }
+  for (const [k, col, base, amp] of [[0.2, "#121a33", GY - 120, 60], [0.45, "#161f3b", GY - 50, 40]]) {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, VH);
+    for (let x = 0; x <= VW + 20; x += 20) { const wx = x + cam * k; ctx.lineTo(x, base - Math.sin(wx / 170) * amp - Math.sin(wx / 63) * amp * 0.3); }
+    ctx.lineTo(VW + 20, VH); ctx.fill();
+  }
+  ctx.translate(-cam, 0);
+  const vis = o => o.x + (o.w || 40) > cam - 40 && o.x < cam + VW + 40;
+
+  // gate banners (the prompt hangs over its blocks)
+  for (const g of gates) {
+    if (!vis({ x: g.x0, w: g.x1 - g.x0 + 40 })) continue;
+    const cx = g.bx + g.zone / 2, text = g.state === "art" ? `___ ${bare(g.s.w.de)}` : promptOf(g.s.w);
+    const fs = 22; ctx.font = `700 ${fs}px ${FONT}`;
+    const tw = ctx.measureText(text).width + 36;
+    ctx.strokeStyle = COL.line; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(cx - tw / 2 + 12, BLOCK_Y - 92); ctx.lineTo(cx - tw / 2 + 12, BLOCK_Y - 300); ctx.moveTo(cx + tw / 2 - 12, BLOCK_Y - 92); ctx.lineTo(cx + tw / 2 - 12, BLOCK_Y - 300); ctx.stroke();
+    rr(ctx, cx - tw / 2, BLOCK_Y - 100, tw, 46, 10);
+    ctx.fillStyle = g.state === "open" ? "rgba(91,224,160,.12)" : COL.panel; ctx.fill();
+    ctx.strokeStyle = g.state === "open" ? COL.ok : g.state === "art" ? COL.shield : COL.gold; ctx.stroke();
+    ctx.fillStyle = COL.fg; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, cx, BLOCK_Y - 76);
+    ctx.font = `500 11px ${FONT}`; ctx.fillStyle = COL.muted;
+    ctx.fillText(g.state === "open" ? "OPEN" : g.state === "art" ? "WHICH ARTICLE?" : "IN GERMAN?", cx, BLOCK_Y - 112);
+  }
+  // ground and platforms
+  for (const s of solids) {
+    if (s.gone || !vis(s)) continue;
+    if (s.kind === "ground") {
+      ctx.fillStyle = "#18203d"; ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.fillStyle = "#2f3b66"; ctx.fillRect(s.x, s.y, s.w, 6);
+      ctx.fillStyle = "rgba(91,224,160,.18)";
+      for (let x = s.x + 10; x < s.x + s.w - 6; x += 37) ctx.fillRect(x, s.y - 3, 3, 3);
+      ctx.fillStyle = "#141a33"; for (let x = s.x + 20; x < s.x + s.w - 10; x += 80) ctx.fillRect(x, s.y + 30, 24, 8);
+    } else if (s.kind === "plat") {
+      rr(ctx, s.x, s.y, s.w, s.h, 5); ctx.fillStyle = COL.panel2; ctx.fill(); ctx.fillStyle = COL.line; ctx.fillRect(s.x + 4, s.y, s.w - 8, 3);
+    }
+  }
+  // word blocks and barriers
+  for (const g of gates) {
+    for (const b of g.blocks) {
+      if (b.gone || !vis(b)) continue;
+      const y = b.y - (b.bumpT > 0 ? Math.sin(b.bumpT / 0.18 * Math.PI) * 8 : 0);
+      const right = g.state === "word" ? b.val === g.s.w.id : b.val === gender(g.s.w.de);
+      const glow = g.state !== "open" && g.reveal && right;
+      rr(ctx, b.x, y, b.w, b.h, 8);
+      ctx.fillStyle = g.state === "open" ? (right ? "rgba(91,224,160,.18)" : COL.panel) : COL.panel2; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = g.state === "open" ? (right ? COL.ok : COL.line) : glow ? COL.gold : g.state === "art" ? COL.shield : "rgba(255,201,74,.55)";
+      if (glow) { ctx.shadowColor = COL.gold; ctx.shadowBlur = 14 + Math.sin(now / 120) * 8; }
+      ctx.stroke(); ctx.shadowBlur = 0;
+      drawDe(ctx, b.text, b.x + b.w / 2, y + b.h / 2 + 1, b.text.length > 14 ? 15 : 17);
+    }
+    const bar = g.bar, a = bar.gone ? Math.max(0, 1 - (g.openT || 0) / 0.4) : 1;
+    if (a > 0 && vis(bar)) {
+      ctx.globalAlpha = a;
+      ctx.fillStyle = "rgba(255,93,115,.18)"; ctx.fillRect(bar.x, 0, bar.w, GY);
+      ctx.fillStyle = COL.bad; ctx.shadowColor = COL.bad; ctx.shadowBlur = 12;
+      for (let i = 0; i < 3; i++) ctx.fillRect(bar.x + 3 + i * 6 + Math.sin(now / 90 + i) * 1.5, 0, 2, GY);
+      ctx.shadowBlur = 0; ctx.fillStyle = "#2b3150"; ctx.fillRect(bar.x - 6, GY - 16, bar.w + 12, 16);
+      ctx.globalAlpha = 1;
+    }
+  }
+  // flags, scrolls, coins, finish
+  for (const f of flags) {
+    if (!vis(f)) continue;
+    ctx.fillStyle = COL.line; ctx.fillRect(f.x, GY - 70, 3, 70);
+    ctx.fillStyle = f.on ? COL.ok : COL.muted; ctx.beginPath(); ctx.moveTo(f.x + 3, GY - 70); ctx.lineTo(f.x + 25, GY - 62); ctx.lineTo(f.x + 3, GY - 54); ctx.fill();
+  }
+  for (const s of scrolls) {
+    if (s.taken || !vis(s)) continue;
+    const y = s.y + Math.sin(now / 300) * 6;
+    rr(ctx, s.x - 17, y - 22, 34, 44, 6); ctx.fillStyle = "#2a2210"; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = COL.gold; ctx.shadowColor = COL.gold; ctx.shadowBlur = 16; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = COL.gold; ctx.font = `700 11px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("NEU", s.x, y);
+  }
+  for (const c of coins) {
+    if (c.taken || !vis(c)) continue;
+    const k = Math.abs(Math.cos(now / 250 + c.ph));
+    ctx.beginPath(); ctx.ellipse(c.x, c.y, 8 * k + 1, 8, 0, 0, 6.283); ctx.fillStyle = COL.gold; ctx.fill();
+    ctx.fillStyle = "#a07a20"; ctx.fillRect(c.x - 1, c.y - 4, 2, 8);
+  }
+  if (run && run.finishX != null) {
+    const x = run.finishX;
+    ctx.fillStyle = COL.fg; ctx.fillRect(x, GY - 160, 4, 160);
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) { ctx.fillStyle = (i + j) % 2 ? COL.fg : COL.bg; ctx.fillRect(x + 4 + i * 12, GY - 160 + j * 12, 12, 12); }
+    ctx.fillStyle = COL.gold; ctx.font = `700 18px ${FONT}`; ctx.textAlign = "center"; ctx.fillText("ZIEL", x + 2, GY - 175);
+  }
+  // crawlers
+  for (const f of foes) {
+    if (!vis(f)) continue;
+    const squash = f.dead ? 0.3 : 1, h = f.h * squash, y = f.y + f.h - h;
+    rr(ctx, f.x, y, f.w, h, [12, 12, 4, 4]); ctx.fillStyle = f.dead ? "#6b3a4a" : "#c2456a"; ctx.fill();
+    if (!f.dead) {
+      const ex = f.vx > 0 ? 6 : -6;
+      ctx.fillStyle = COL.fg; ctx.fillRect(f.x + 8 + ex / 2, y + 7, 5, 6); ctx.fillRect(f.x + 17 + ex / 2, y + 7, 5, 6);
+      ctx.fillStyle = "#8a2e4a"; for (let i = 0; i < 3; i++) ctx.fillRect(f.x + 3 + i * 10, f.y + f.h - 3 + Math.sin(f.ph + i) * 2, 5, 3);
+    }
+  }
+  // the player
+  if (run && !(me.inv > 0 && Math.floor(now / 80) % 2)) {
+    const x = me.x, y = me.y, leg = me.on ? Math.sin(me.step) * 5 : 3;
+    ctx.fillStyle = "#9aa3c7"; ctx.fillRect(x + 5, y + 34, 6, 10 + leg * (me.on ? 1 : 0)); ctx.fillRect(x + 15, y + 34, 6, 10 - leg * (me.on ? 1 : 0));
+    rr(ctx, x, y + 6, me.w, 30, 7); ctx.fillStyle = COL.fg; ctx.fill();
+    const vx = me.face > 0 ? x + 9 : x + 3;
+    rr(ctx, vx, y + 12, 14, 9, 4); ctx.fillStyle = COL.gold; ctx.fill();
+    ctx.fillStyle = COL.gold; ctx.fillRect(x + 11, y - 1, 4, 8);
+  }
+  for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; ctx.fillRect(p.x - 2, p.y - 2, 4, 4); }
+  ctx.globalAlpha = 1;
+  for (const f of floats) {
+    ctx.globalAlpha = 1 - f.t; ctx.fillStyle = f.c; ctx.font = `700 ${f.size}px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (run) { drawBand(); if (run.card) drawCard(); }
+  if (paused && run) {
+    ctx.fillStyle = "rgba(11,14,26,.75)"; ctx.fillRect(0, BAND, W, H - BAND);
+    ctx.fillStyle = COL.fg; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `700 ${Math.min(24, W / 18)}px ${FONT}`;
+    ctx.fillText("Paused · click or press Esc to continue", W / 2, H / 2);
+  }
+}
+
+// HUD band in screen pixels: prompt of the next gate in the middle.
+function drawBand() {
+  ctx.fillStyle = "rgba(20,26,46,.94)"; ctx.fillRect(0, 0, W, BAND);
+  ctx.fillStyle = COL.line; ctx.fillRect(0, BAND - 1, W, 1);
+  const g = nextGate();
+  ctx.textBaseline = "middle"; ctx.textAlign = "left"; ctx.font = `500 11px ${FONT}`; ctx.fillStyle = COL.muted;
+  const tag = run.practice ? "PRACTICE" : g ? (g.s.m === "review" ? "REVIEW" : "LEARNING") : "";
+  ctx.fillText(`${settings.lang.toUpperCase()} → DE${tag ? "  ·  " + tag : ""}  ·  ● ${run.coins}`, 14, 16);
+  ctx.textAlign = "right"; ctx.font = `700 14px ${FONT}`;
+  const hearts = "♥".repeat(Math.max(0, run.lives));
+  ctx.fillStyle = COL.bad; ctx.fillText(hearts, W - 14, 16);
+  const hw = ctx.measureText(hearts).width;
+  ctx.fillStyle = COL.fg; ctx.fillText(String(run.score) + (run.combo > 1 ? `  ×${run.combo}` : ""), W - 24 - hw, 16);
+  ctx.textAlign = "center";
+  if (g) {
+    const t = g.state === "art" ? `der, die or das? ___ ${bare(g.s.w.de)}` : promptOf(g.s.w);
+    ctx.fillStyle = g.state === "art" ? COL.shield : COL.fg; ctx.font = `700 ${fitFont(ctx, t, W - 40, 26, 13)}px ${FONT}`;
+    ctx.fillText(t, W / 2, 40);
+  } else {
+    ctx.fillStyle = COL.muted; ctx.font = `500 15px ${FONT}`;
+    ctx.fillText(run.finishX != null ? "All words done · run to the finish" : "Run on to the next gate", W / 2, 40);
+  }
+  ctx.fillStyle = COL.line; ctx.fillRect(0, BAND - 3, W, 3);
+  ctx.fillStyle = COL.gold; ctx.fillRect(0, BAND - 3, W * Math.min(1, run.done / Math.max(1, run.total)), 3);
+}
+
+// The teaching card: meaning first, then the German.
+function drawCard() {
+  const w = run.card.w, bw = Math.min(W - 32, 460), bh = 210, x = (W - bw) / 2, y = Math.max(BAND + 12, (H - bh) / 2);
+  ctx.fillStyle = "rgba(11,14,26,.55)"; ctx.fillRect(0, BAND, W, H - BAND);
+  const grd = ctx.createLinearGradient(x, y, x + bw, y + bh);
+  grd.addColorStop(0, "#2a2210"); grd.addColorStop(1, "#1a1a2e");
+  rr(ctx, x, y, bw, bh, 16); ctx.fillStyle = grd; ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = COL.gold; ctx.shadowColor = COL.gold; ctx.shadowBlur = 18; ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = `700 11px ${FONT}`; ctx.fillStyle = COL.gold; ctx.fillText("NEW WORD", W / 2, y + 22);
+  const pr = promptOf(w);
+  ctx.fillStyle = COL.fg; ctx.font = `700 ${fitFont(ctx, pr, bw - 40, 26, 13)}px ${FONT}`; ctx.fillText(pr, W / 2, y + 58);
+  ctx.font = `500 12px ${FONT}`; ctx.fillStyle = COL.muted; ctx.fillText("in German", W / 2, y + 88);
+  drawDe(ctx, w.de, W / 2, y + 120, fitFont(ctx, w.de, bw - 40, 34, 14));
+  const o = otherOf(w);
+  if (o) { ctx.textAlign = "center"; ctx.font = `500 13px ${FONT}`; ctx.fillStyle = "rgba(138,147,179,.8)"; ctx.fillText(o, W / 2, y + 152); }
+  ctx.textAlign = "center"; ctx.font = `500 12px ${FONT}`; ctx.fillStyle = COL.gold;
+  ctx.fillText("Space, Enter or tap to continue · a gate will ask for it soon", W / 2, y + bh - 20);
+}
+
+function loop(ts) {
+  const dt = Math.min(0.033, (ts - last) / 1000); last = ts;
+  if (run && !paused) update(dt);
+  if (!paused) tickEffects(dt);
+  draw(ts);
+  requestAnimationFrame(loop);
+}
+
+function finish(complete) {
+  if (!run) return;
+  saveProgress();
+  const r = run; run = null;
+  $("#stage").classList.add("tall"); $("#stage").classList.remove("playing");
+  $("#over-title").textContent = complete ? (r.practice ? "Practice complete" : "Ziel erreicht!") : "Out of hearts";
+  $("#over-stats").innerHTML = resultsHTML([["Score", r.score], ["Correct", r.ok], ["Mistakes", r.bad], ["Article errors", r.artBad],
+    ["Best streak", r.maxCombo], ["Learned", r.learned.length], ["Coins", r.coins], ["Hearts", Math.max(0, r.lives)]]);
+  $("#over-learned").innerHTML = wordChips("Learned today, back for review tomorrow:", r.learned);
+  $("#over-weak").innerHTML = wordChips("Needs more work:", [...r.weak]);
+  $("#over").hidden = false;
+  $("#today").innerHTML = todayChips();
+}
+
+/* ---------- Input ---------- */
+function closeCard() { if (run && run.card) { run.card = null; keys.j = false; me.buffer = 0; return true; } return false; }
+function press(k, down) {
+  if (k === "j") { if (down && !keys.j && !closeCard()) me.buffer = 0.12; keys.j = down; }
+  else keys[k] = down;
+}
+const KEYMAP = { arrowleft: "l", a: "l", arrowright: "r", d: "r", " ": "j", arrowup: "j", w: "j" };
+window.addEventListener("keydown", e => {
+  if (!run || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === "escape") { paused = !paused; keys = { l: false, r: false, j: false }; return; }
+  if (k === "enter") { e.preventDefault(); closeCard(); return; }
+  if (KEYMAP[k]) { e.preventDefault(); if (paused) { paused = false; return; } if (!e.repeat) press(KEYMAP[k], true); }
+});
+window.addEventListener("keyup", e => { const k = KEYMAP[e.key.toLowerCase()]; if (k && run) press(k, false); });
+cv.addEventListener("pointerdown", () => { if (!run) return; if (paused) { paused = false; return; } closeCard(); });
+document.querySelectorAll(".pad button").forEach(b => {
+  const k = b.dataset.k;
+  b.addEventListener("pointerdown", e => { e.preventDefault(); if (!run) return; if (paused) paused = false; b.classList.add("down"); press(k, true); try { b.setPointerCapture(e.pointerId); } catch {} });
+  ["pointerup", "pointercancel"].forEach(t => b.addEventListener(t, () => { b.classList.remove("down"); if (run) press(k, false); }));
+});
+document.addEventListener("visibilitychange", () => { if (document.hidden && run) { paused = true; keys = { l: false, r: false, j: false }; } });
+window.addEventListener("blur", () => { if (run) { paused = true; keys = { l: false, r: false, j: false }; } });
+
+/* ---------- Menu & boot ---------- */
+$("#btn-start").onclick = startRun;
+$("#btn-again").onclick = startRun;
+$("#btn-menu").onclick = () => { $("#over").hidden = true; $("#menu").hidden = false; $("#today").innerHTML = todayChips(); };
+bindSettings(() => $("#today").innerHTML = todayChips());
+loadWords().then(ok => {
+  if (!ok) { $("#today").innerHTML = `<span class="chip">No word list yet: open the <a href="index.html" style="color:var(--gold)">Shooter</a> once to load it</span>`; $("#btn-start").disabled = true; return; }
+  $("#today").innerHTML = todayChips();
+});
+resize();
+requestAnimationFrame(t => { last = t; loop(t); });
+</script>
+</body>
+</html>

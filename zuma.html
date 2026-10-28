@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wortkette</title>
+<link rel="manifest" href="zuma.webmanifest">
+<meta name="theme-color" content="#0b0e1a">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="wj.css">
+<style>
+/* Layout: chain canvas on top, then the HUD, the word panel and the colour legend */
+.stage.tall { min-height: 520px; }
+#cv { cursor: crosshair; }
+.bar { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; margin-top: 12px; }
+@media (max-width: 760px) { .bar { grid-template-columns: 1fr; } }
+.hud { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.hud .chip.low b { color: var(--bad); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-height: 150px; }
+.panel h3 { margin: 0 0 8px; font: 500 11px/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.q-prompt { font: 700 clamp(22px, 4vw, 30px)/1.15 var(--f-display); }
+.q-de { font: 700 clamp(24px, 4.4vw, 34px)/1.15 var(--f-display); margin: 4px 0; }
+.q-sub { color: var(--muted); font-size: 14px; margin: 2px 0 0; }
+.q-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+kbd { font: 500 11px/1 var(--f-mono); padding: 3px 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.primary { border: 0; background: var(--gold); color: #1a1405; font-weight: 600; border-radius: 8px; padding: 8px 16px; display: inline-flex; gap: 8px; align-items: center; }
+.primary kbd { border-color: rgba(26, 20, 5, .3); color: #1a1405; }
+.hint { color: var(--muted); font-size: 14px; margin: 0; }
+.tag-new { color: var(--gold); }
+.legend { display: grid; gap: 6px; }
+/* Phone held sideways (the installed app): no header, chain fills the height, panels in a column beside it */
+@media (orientation: landscape) and (max-height: 520px) {
+  .top { display: none; }
+  main { display: flex; gap: 8px; padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left); max-width: none; }
+  .stage { flex: none; width: min(calc(100vw - 190px), calc(100dvh * 16 / 9)); border-radius: 0; border-width: 0 1px 0 0; }
+  .stage.tall { width: 100%; min-height: 0; height: 100dvh; border: 0; }
+  .bar { flex: 1; min-width: 0; height: 100dvh; overflow-y: auto; margin: 0; padding: 6px 6px 6px 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .bar > * { flex: none; }
+  #quiz .hint, #quiz .next { display: none; }
+  .bar .chip { font-size: 11px; padding: 5px 8px; }
+  .panel { padding: 8px; min-height: 0; }
+  .q-prompt { font-size: 18px; } .q-de { font-size: 20px; }
+  .q-acts kbd { display: none; }
+  .overlay { justify-content: flex-start; gap: 10px; padding: 12px; }
+  .lede, .howto { display: none; }
+}
+
+.legend div { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); }
+.legend b { font: 700 15px/1.2 var(--f-display); }
+.legend small { font: 500 12px var(--f-mono); color: var(--muted); }
+.legend canvas { width: 22px; height: 22px; }
+.next { color: var(--muted); font-size: 13px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">Wort<b>kette</b><span>Word chain · RO / EN → DE</span></div>
+  <nav class="tabs" aria-label="Games">
+    <a class="tab" href="index.html">Shooter</a>
+    <a class="tab" href="tower.html">Tower</a>
+    <a class="tab on" href="zuma.html" aria-current="page">Chain</a>
+    <a class="tab" href="platform.html">Platformer</a>
+    <a class="tab" href="index.html#reg">Register</a>
+  </nav>
+</header>
+
+<main>
+  <div class="stage tall" id="stage">
+    <canvas id="cv"></canvas>
+
+    <div class="overlay" id="menu">
+      <h1>Wort<b>kette</b></h1>
+      <p class="lede">A chain of German words rolls toward the hole. Your brick carries a Romanian or English word. Shoot it next to its German translation: three of a kind and the chain breaks.</p>
+      <div class="howto">
+        <div><strong>Training</strong>New words are taught before each level. Learn them, then break the chain with them.</div>
+        <div><strong>Aim with meaning</strong>Every colour is one German word (see the legend). Your brick only shows its meaning: you have to know which colour it belongs to.</div>
+        <div><strong>Wrong shots</strong>A brick that lands next to the wrong word turns its true colour and stays in the chain as clutter.</div>
+        <div><strong>Combos</strong>When a gap closes with the same colour on both sides, the chain pulls back and can break again.</div>
+      </div>
+      <div class="today" id="today"></div>
+      <div class="opts">
+        <label>Prompt language
+          <select id="set-lang"><option value="ro">Română</option><option value="en">English</option></select>
+        </label>
+        <label>New words per run
+          <select id="set-new"><option>3</option><option>5</option><option>8</option><option>12</option></select>
+        </label>
+        <label><input type="checkbox" id="set-voice"> Speak German</label>
+      </div>
+      <button class="big" id="btn-start">Break the chain</button>
+      <p class="keys">Aim: mouse or ← → · Shoot: click or ↑ · Swap brick: right click or Space · Pause: Esc<br>Touch: drag to aim, let go to shoot · tap the shooter to swap</p>
+    </div>
+
+    <div class="overlay" id="over" hidden>
+      <h2 id="over-title">Chain broken</h2>
+      <div class="result-grid" id="over-stats"></div>
+      <div id="over-learned"></div>
+      <div id="over-weak"></div>
+      <div class="row-btns">
+        <button class="big" id="btn-again">Play again</button>
+        <button class="ghost" id="btn-menu">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar" id="bar" hidden>
+    <div class="hud" id="hud"></div>
+    <section class="panel" id="quiz" aria-live="polite"></section>
+    <section class="panel" id="legend"></section>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="wj-core.js"></script>
+<script>
+"use strict";
+/* ---------- Track: a 16 × 9 field, an elliptic spiral that ends in the hole ---------- */
+const COLS = 16, ROWS = 9;
+const BL = 1.0, BH = 0.5, D = BL + 0.04; // brick length along the track, height and spacing, in tiles
+const FROG = { x: 8, y: 4.55 };
+const PX = [], PY = [], PL = [];          // dense samples of the track and the length walked to each
+(function buildTrack() {
+  const R0 = 4.1, R1 = 1.95, TURNS = 1.7, sx = 1.6;
+  const at = th => { const r = R0 - (R0 - R1) * (th - Math.PI) / (TURNS * 6.283); return [FROG.x + r * sx * Math.cos(th), FROG.y + r * Math.sin(th)]; };
+  const [x0, y0] = at(Math.PI);
+  for (let i = 0; i <= 40; i++) { PX.push(x0); PY.push(ROWS + 1 - (ROWS + 1 - y0) * i / 40); }
+  for (let i = 1; i <= 1600; i++) { const [x, y] = at(Math.PI + TURNS * 6.283 * i / 1600); PX.push(x); PY.push(y); }
+  PL.push(0);
+  for (let i = 1; i < PX.length; i++) PL.push(PL[i - 1] + Math.hypot(PX[i] - PX[i - 1], PY[i] - PY[i - 1]));
+})();
+const END = PL[PL.length - 1];
+const VISIBLE = 1 + BL / 2; // the track enters the field one tile after its start
+function pos(s) {
+  if (s <= 0) return { x: PX[0], y: PY[0] };
+  if (s >= END) return { x: PX[PX.length - 1], y: PY[PY.length - 1] };
+  let lo = 0, hi = PL.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (PL[m] <= s) lo = m; else hi = m; }
+  const t = (s - PL[lo]) / (PL[hi] - PL[lo]);
+  return { x: PX[lo] + (PX[hi] - PX[lo]) * t, y: PY[lo] + (PY[hi] - PY[lo]) * t };
+}
+
+/* ---------- Bricks: one colour per word, with a short form of the word written on it ---------- */
+const BALL = ["#ffc94a", "#ff5d73", "#6aa8ff", "#5be0a0", "#b98cff", "#ff9a4a"];
+// "die Gelegenheit" → "Gelegen.", "to make a decision" → "make"
+function short(t, n = 8) {
+  const s = (t || "").replace(/^(der|die|das|sich|to|a)\s+/i, "").split(/[\s,;/(]/)[0];
+  return s.length > n ? s.slice(0, n - 1) + "." : s;
+}
+const fitCache = new Map();
+function fitText(c, text, maxW, start) {
+  const k = text + "|" + Math.round(maxW) + "|" + start;
+  if (!fitCache.has(k)) fitCache.set(k, fitFont(c, text, maxW, start, 7));
+  c.font = `700 ${fitCache.get(k)}px ${FONT}`;
+}
+// A brick centred on x, y along angle ang; text always reads upright.
+function drawBrick(c, x, y, ang, w, h, fill, text, ink, stroke) {
+  if (ang > Math.PI / 2) ang -= Math.PI; else if (ang < -Math.PI / 2) ang += Math.PI;
+  c.save(); c.translate(x, y); c.rotate(ang);
+  rr(c, -w / 2, -h / 2, w, h, h * .28); c.fillStyle = fill; c.fill();
+  if (stroke) { c.lineWidth = 2; c.strokeStyle = stroke; c.stroke(); }
+  else { c.fillStyle = "rgba(255,255,255,.24)"; c.fillRect(-w / 2 + h * .25, -h / 2 + h * .12, w - h * .5, h * .12); }
+  if (text) { fitText(c, text, w - 6, Math.max(8, Math.round(h * .52))); c.fillStyle = ink; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(text, 0, h * .05); }
+  c.restore();
+}
+function tangent(s) { const p = pos(s - 0.05), q = pos(s + 0.05); return Math.atan2(q.y - p.y, q.x - p.x); }
+// A chain brick of word k
+function drawBall(c, x, y, ang, k) { drawBrick(c, x, y, ang, BL * T - 2, BH * T, BALL[k], short(run.pal[k].de), "#10131f"); }
+// The brick you hold: its colour is hidden, only its meaning shows.
+function drawMystery(c, x, y, ang, k) { drawBrick(c, x, y, ang, BL * T - 2, BH * T, COL.panel2, short(promptOf(run.pal[k])), COL.gold, COL.gold); }
+// Is the point x, y on the brick at track position s (with some margin for the flying brick)?
+function onBrick(s, x, y, m = 0.22) {
+  const p = pos(s), a = tangent(s), tx = Math.cos(a), ty = Math.sin(a), dx = x - p.x, dy = y - p.y;
+  return Math.abs(dx * tx + dy * ty) < BL / 2 + m && Math.abs(dy * tx - dx * ty) < BH / 2 + m;
+}
+
+/* ---------- State ---------- */
+const cv = $("#cv"), ctx = cv.getContext("2d");
+let W = 960, H = 540, T = 60, DPR = 1;
+let run = null, paused = false, last = performance.now(), gt = 0, shake = 0;
+let balls = [], shots = [], parts = [], floats = [];
+let aim = -Math.PI / 2, cool = 0, hudText = "", legendText = "", keys = {};
+
+function resize() {
+  W = $("#stage").clientWidth; T = W / COLS; H = T * ROWS;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * DPR; cv.height = H * DPR; cv.style.height = H + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener("resize", resize);
+new ResizeObserver(resize).observe($("#stage"));
+
+/* ---------- Run and levels ---------- */
+function startRun() {
+  if (!canPlay()) { toast("Switch on at least 4 words in the register to play."); return; }
+  audioOn();
+  const queue = buildQueue();
+  run = { queue, practice: queue.every(s => s.m === "retry"), lives: 3, score: 0, combo: 0, chain: 0, maxCombo: 0, ok: 0, bad: 0,
+    level: 0, cleared: 0, learned: [], weak: new Set(), seen: [], phase: "ready", teach: [], ti: 0,
+    steps: {}, pal: [], ammo: [], reveal: null, done: 0, total: queue.filter(s => s.k === "test").length };
+  balls = []; shots = []; parts = []; floats = []; gt = 0; paused = false;
+  $("#menu").hidden = true; $("#over").hidden = true; $("#bar").hidden = false; $("#stage").classList.remove("tall");
+  resize(); nextLevel();
+}
+
+// Each level takes tests from the queue until it has enough different words; new ones are taught first.
+// Every word becomes one colour of the chain.
+function nextLevel() {
+  run.level++; run.teach = []; run.ti = 0; run.steps = {}; run.reveal = null;
+  const want = Math.min(6, 3 + run.level), ids = [];
+  while (run.queue.length) {
+    const s = run.queue[0];
+    if (!ids.includes(s.w.id) && ids.length >= want) break;
+    run.queue.shift();
+    if (s.k === "intro") { run.teach.push(s); continue; }
+    if (!ids.includes(s.w.id)) ids.push(s.w.id);
+    (run.steps[s.w.id] ||= []).push(s);
+  }
+  const pal = ids.map(id => words.find(w => w.id === id)).filter(Boolean);
+  // Too few words left: fill up with words the player already knows (never untaught ones).
+  const clash = c => pal.some(w => w.id === c.id || tokens(promptOf(w)).some(t => tokens(promptOf(c)).includes(t)));
+  const known = shuffle([...run.seen, ...words.filter(w => w.active !== false && progress[w.id]?.seen)]);
+  for (const c of known) { if (pal.length >= Math.max(3, Math.min(want, 4))) break; if (!clash(c)) pal.push(c); }
+  run.pal = pal.slice(0, 6);
+  run.phase = run.teach.length ? "teach" : "ready";
+  if (run.phase === "teach") teachWord();
+  renderQuiz(); renderLegend();
+}
+/* ---------- Voice: recorded files from make-audio.py, browser speech as the fallback ---------- */
+const clips = {}, noClip = new Set();
+function speak(w) {
+  if (!settings.voice) return;
+  if (noClip.has(w.id)) return say(w.de);
+  const a = clips[w.id] || (clips[w.id] = new Audio(`audio/${w.id}.mp3`));
+  for (const c of Object.values(clips)) if (c !== a && !c.paused) c.pause();
+  a.currentTime = 0;
+  // a missing file is NotSupportedError; an interrupted or not-yet-allowed play is not
+  a.play().catch(e => { if (e.name === "NotSupportedError") { noClip.add(w.id); delete clips[w.id]; say(w.de); } });
+}
+function teachWord() { const w = run.teach[run.ti].w; introduce(w); speak(w); sfx.gold(); }
+function nextTeach() {
+  if (++run.ti < run.teach.length) teachWord(); else run.phase = "ready";
+  renderQuiz();
+}
+function startLevel() {
+  for (const w of run.pal) if (!run.seen.includes(w)) run.seen.push(w);
+  makeChain();
+  run.phase = "play"; run.ammo = [newAmmo(), newAmmo()]; run.ammo[0].at = gt;
+  floatText(FROG.x, FROG.y - 1.2, `LEVEL ${run.level}`, COL.gold, 34); sfx.level();
+  renderQuiz(); renderLegend();
+}
+// The whole chain waits behind the start of the track and rolls in fast.
+function makeChain() {
+  const n = 14 + 4 * run.level, k = run.pal.length, list = [];
+  const need = run.pal.flatMap((w, i) => run.steps[w.id] ? [i, i, i] : [i]); // every word appears, tested ones more
+  let prev = -1, runLen = 0;
+  for (let i = 0; i < n; i++) {
+    let c = i < need.length ? need[i] : Math.random() < 0.4 && runLen < 2 && prev >= 0 ? prev : Math.random() * k | 0;
+    if (c === prev && runLen >= 2) c = (c + 1 + (Math.random() * (k - 1) | 0)) % k;
+    runLen = c === prev ? runLen + 1 : 1; prev = c; list.push(c);
+  }
+  // shuffle the guaranteed ones in, then break up any run of three
+  shuffle(list);
+  for (let i = 2; i < list.length; i++) if (list[i] === list[i - 1] && list[i] === list[i - 2]) list[i] = (list[i] + 1) % k;
+  balls = list.map((c, i) => ({ c, s: -i * D, ds: -i * D })).reverse();
+  run.intro = true;
+}
+function present(c) { return balls.some(b => b.c === c && !b.fly); }
+// Ammo is always a colour still in the chain; words with a test waiting come up more often.
+function newAmmo() {
+  const cs = [...new Set(balls.map(b => b.c))];
+  if (!cs.length) return null;
+  const pool = cs.flatMap(c => run.steps[run.pal[c].id]?.length ? [c, c, c, c] : [c]);
+  return { c: pool[Math.random() * pool.length | 0], at: null };
+}
+function swap() { if (run?.phase === "play" && run.ammo[1]) { run.ammo.reverse(); run.ammo[0].at = gt; sfx.bump(); renderQuiz(); } }
+function fire() {
+  if (!run || run.phase !== "play" || paused || cool > 0 || !run.ammo[0]) return;
+  const a = run.ammo[0];
+  shots.push({ c: a.c, at: a.at ?? gt, x: FROG.x + Math.cos(aim) * 0.9, y: FROG.y + Math.sin(aim) * 0.9, vx: Math.cos(aim) * 16, vy: Math.sin(aim) * 16 });
+  run.ammo = [run.ammo[1] || newAmmo(), newAmmo()]; if (run.ammo[0]) run.ammo[0].at = gt;
+  cool = 0.28; sfx.shot(); renderQuiz();
+}
+
+/* ---------- Landing: the learning moment ---------- */
+function land(b) {
+  const i = balls.indexOf(b), w = run.pal[b.c];
+  const nb = [balls[i - 1], balls[i + 1]].filter(n => n && !n.fly && Math.abs(n.s - b.s) < D * 1.6);
+  const target = b.hitC !== undefined ? run.pal[b.hitC] : null;
+  const p = pos(b.s);
+  if (!balls.some(o => o !== b && o.c === b.c)) { popAt(i, false); return; } // its word left the chain while it flew: no grade
+  const ok = nb.some(n => n.c === b.c);
+  const step = run.steps[w.id]?.shift(), rt = gt - b.at;
+  if (step) run.done++;
+  if (ok) {
+    run.ok++; run.combo++; run.maxCombo = Math.max(run.maxCombo, run.combo);
+    run.score += 50 + run.combo * 10 + Math.max(0, Math.round((6000 - rt) / 60));
+    floatText(p.x, p.y - 0.6, w.de, BALL[b.c], 17); sfx.ok();
+    if (step) {
+      if (step.m === "learn2" && !run.practice) run.learned.push(w);
+      const again = grade(step, true, { rt, practice: run.practice, fast: 4000, slow: 10000 });
+      if (again) { (run.steps[w.id] ||= []).push(again); run.total++; }
+    }
+    run.reveal = null;
+    popAt(i, false);
+  } else {
+    run.bad++; run.combo = 0; run.weak.add(w);
+    burst(p.x, p.y, COL.bad, 16, 3); shake = 0.3; sfx.bad();
+    floatText(p.x, p.y - 0.6, w.de, COL.bad, 17);
+    if (step) {
+      const again = grade(step, false, { practice: run.practice });
+      if (again) { (run.steps[w.id] ||= []).push(again); run.total++; }
+    }
+    run.reveal = { w, hit: target && target.id !== w.id ? target : null, until: gt + 3500 };
+  }
+  renderQuiz(); renderLegend();
+}
+
+// Three or more touching balls of one colour around index i break out of the chain.
+function popAt(i, chained) {
+  const c = balls[i]?.c; if (c === undefined) return false;
+  let a = i, z = i;
+  while (a > 0 && balls[a - 1].c === c && !balls[a - 1].fly && balls[a].s - balls[a - 1].s < D * 1.05) a--;
+  while (z < balls.length - 1 && balls[z + 1].c === c && !balls[z + 1].fly && balls[z + 1].s - balls[z].s < D * 1.05) z++;
+  if (z - a + 1 < 3) return false;
+  const gone = balls.splice(a, z - a + 1);
+  run.chain = chained ? run.chain + 1 : 1;
+  const pts = gone.length * 10 * run.chain;
+  run.score += pts;
+  for (const g of gone) { const p = pos(g.ds); burst(p.x, p.y, BALL[g.c], 10, 3); }
+  const mid = pos(gone[gone.length >> 1].ds);
+  floatText(mid.x, mid.y - 0.3, run.chain > 1 ? `+${pts} · chain ×${run.chain}` : `+${pts}`, COL.gold, run.chain > 1 ? 20 : 15);
+  if (run.chain > 1) sfx.level(); else sfx.crack();
+  speak(run.pal[c]); // every broken group is read out in German
+  return true;
+}
+
+/* ---------- Effects ---------- */
+function burst(x, y, color, n = 18, spd = 3) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.283, v = spd * (0.3 + Math.random());
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.5 + Math.random() * 0.4, t: 0, c: color });
+  }
+}
+function floatText(x, y, text, c, size = 16) { floats.push({ x, y, text, c, t: 0, size }); }
+
+/* ---------- Update ---------- */
+function update(dt) {
+  gt += dt * 1000; cool -= dt;
+  if (keys.ArrowLeft) aim -= 2.4 * dt;
+  if (keys.ArrowRight) aim += 2.4 * dt;
+  if (run.reveal && gt >= run.reveal.until) { run.reveal = null; renderQuiz(); }
+  if (run.phase === "play") moveChain(dt);
+  else if (run.phase === "drain") drain(dt);
+  for (const b of balls) b.ds += (b.s - b.ds) * Math.min(1, dt * 18);
+
+  // shots fly in small steps and stick to the first ball they touch
+  for (const sh of shots) {
+    for (let k = 0; k < 3 && !sh.done; k++) {
+      sh.x += sh.vx * dt / 3; sh.y += sh.vy * dt / 3;
+      if (sh.x < -1 || sh.y < -1 || sh.x > COLS + 1 || sh.y > ROWS + 1) { sh.done = true; break; }
+      if (run.phase !== "play") continue;
+      const hit = balls.find(b => b.s > VISIBLE && !b.fly && onBrick(b.s, sh.x, sh.y));
+      if (hit) { insert(sh, hit); sh.done = true; }
+    }
+  }
+  shots = shots.filter(s => !s.done);
+
+  for (const b of balls) if (b.fly && (b.fly.t += dt / 0.12) >= 1) { b.fly = null; land(b); break; }
+
+  if (run.phase === "play") {
+    if (!balls.length && !shots.length) return clearLevel();
+    if (run.ammo.some(a => !a || !present(a.c))) {
+      run.ammo = run.ammo.map(a => a && present(a.c) ? a : newAmmo());
+      if (run.ammo[0] && run.ammo[0].at == null) run.ammo[0].at = gt;
+      renderQuiz();
+    }
+    if (balls.length && balls[balls.length - 1].s >= END) {
+      run.phase = "drain"; run.combo = 0; shake = 0.6; sfx.bad(); shots = [];
+      floatText(FROG.x, FROG.y - 1.2, "The chain reached the hole", COL.bad, 22); renderQuiz();
+    }
+  }
+  if (run.phase === "over" && gt >= run.endAt) return finish(false);
+  renderHud();
+}
+
+function moveChain(dt) {
+  if (!balls.length) return;
+  const head = balls[balls.length - 1].s;
+  if (run.intro && head > END * 0.3) run.intro = false;
+  const near = END - head;
+  const v = run.intro ? 7 : (0.32 + 0.035 * run.level) * (near < 6 ? 0.55 : 1);
+  // the back of the chain pushes everything it touches
+  balls[0].s += v * dt;
+  for (let i = 1; i < balls.length; i++) if (balls[i].s < balls[i - 1].s + D) balls[i].s = balls[i - 1].s + D;
+  // a gap with the same colour on both sides pulls the front part back
+  for (let i = balls.length - 1; i > 0; i--) {
+    const gap = balls[i].s - balls[i - 1].s;
+    if (gap <= D + 0.01 || balls[i].c !== balls[i - 1].c || balls[i].fly || balls[i - 1].fly) continue;
+    let e = i; while (e < balls.length - 1 && balls[e + 1].s - balls[e].s <= D + 0.01) e++;
+    const back = Math.min(gap - D, 9 * dt);
+    for (let j = i; j <= e; j++) balls[j].s -= back;
+    if (gap - back <= D + 0.01) { sfx.bump(); if (!popAt(i, true)) run.chain = 0; }
+    break;
+  }
+}
+function insert(sh, hit) {
+  const j = balls.indexOf(hit), p = pos(hit.s), q = pos(hit.s + 0.05);
+  const ahead = (sh.x - p.x) * (q.x - p.x) + (sh.y - p.y) * (q.y - p.y) > 0;
+  const nb = { c: sh.c, s: ahead ? hit.s + D : hit.s, at: sh.at, hitC: hit.c, fly: { x: sh.x, y: sh.y, t: 0 } };
+  nb.ds = nb.s;
+  balls.splice(ahead ? j + 1 : j, 0, nb);
+  for (let i = 1; i < balls.length; i++) if (balls[i].s < balls[i - 1].s + D) balls[i].s = balls[i - 1].s + D;
+}
+// Lost the level: the whole chain slides into the hole, then the level starts over.
+function drain(dt) {
+  for (const b of balls) b.s += 14 * dt;
+  balls = balls.filter(b => b.s < END);
+  if (balls.length) return;
+  run.lives--;
+  if (run.lives <= 0) { run.phase = "over"; run.endAt = gt + 600; renderQuiz(); return; }
+  toast(`${run.lives} ${run.lives === 1 ? "life" : "lives"} left · the level starts over`);
+  startLevel();
+}
+function clearLevel() {
+  run.cleared++;
+  const bonus = 200 + 100 * run.level;
+  run.score += bonus; sfx.level();
+  floatText(FROG.x, FROG.y - 1.2, `Chain broken · +${bonus}`, COL.ok, 24);
+  // tests still waiting go to the front of the next level
+  const left = run.pal.flatMap(w => run.steps[w.id] || []);
+  run.queue.unshift(...left);
+  if (!run.queue.length) return finish(true);
+  nextLevel();
+}
+
+function tickEffects(dt) {
+  for (const p of parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.94; p.vy *= 0.94; }
+  parts = parts.filter(p => p.t < p.life);
+  for (const f of floats) { f.t += dt; f.y -= 0.7 * dt; }
+  floats = floats.filter(f => f.t < 1.4);
+  if (shake > 0) shake -= dt;
+}
+
+/* ---------- Draw ---------- */
+// The first chain brick on the aim line (walked like a shot), to read its word before shooting.
+function aimTarget() {
+  const dx = Math.cos(aim), dy = Math.sin(aim);
+  const near = balls.filter(b => b.s > VISIBLE && !b.fly).map(b => ({ b, p: pos(b.s) }));
+  for (let t = 0.9; t < 18; t += 0.08) {
+    const x = FROG.x + dx * t, y = FROG.y + dy * t;
+    if (x < -1 || y < -1 || x > COLS + 1 || y > ROWS + 1) break;
+    const o = near.find(o => Math.abs(o.p.x - x) < 1 && Math.abs(o.p.y - y) < 1 && onBrick(o.b.s, x, y));
+    if (o) return { b: o.b, t };
+  }
+  return null;
+}
+
+function draw(now) {
+  ctx.save();
+  if (shake > 0) ctx.translate((Math.random() - .5) * 10 * shake, (Math.random() - .5) * 10 * shake);
+  ctx.fillStyle = COL.bg; ctx.fillRect(-10, -10, W + 20, H + 20);
+  // subtle dot grid
+  ctx.fillStyle = "rgba(138,147,179,.07)";
+  for (let c = 0; c <= COLS; c++) for (let r = 0; r <= ROWS; r++) ctx.fillRect(c * T - 1, r * T - 1, 2, 2);
+  // track
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.beginPath(); for (let i = 0; i < PX.length; i += 4) ctx[i ? "lineTo" : "moveTo"](PX[i] * T, PY[i] * T);
+  ctx.strokeStyle = "#1b2340"; ctx.lineWidth = T * BH * 1.5; ctx.stroke();
+  ctx.strokeStyle = "rgba(255,201,74,.10)"; ctx.lineWidth = Math.max(1, T * 0.03); ctx.setLineDash([T * .15, T * .2]); ctx.stroke(); ctx.setLineDash([]);
+  // the hole, glowing red when the chain is close
+  const hp = pos(END), head = balls.length ? balls[balls.length - 1].s : 0, danger = run && run.phase === "play" && END - head < 6;
+  ctx.beginPath(); ctx.arc(hp.x * T, hp.y * T, T * 0.42, 0, 6.283); ctx.fillStyle = "#05070e"; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = danger ? COL.bad : COL.line;
+  if (danger) { ctx.shadowColor = COL.bad; ctx.shadowBlur = 14 + Math.sin(now / 120) * 8; }
+  ctx.stroke(); ctx.shadowBlur = 0;
+
+  // aim line and the word it points at
+  const playing = run && run.phase === "play" && !paused;
+  const tgt = playing ? aimTarget() : null;
+  if (playing) {
+    const len = tgt ? tgt.t : 18;
+    ctx.strokeStyle = "rgba(255,201,74,.35)"; ctx.lineWidth = 2; ctx.setLineDash([4, 8]);
+    ctx.beginPath(); ctx.moveTo((FROG.x + Math.cos(aim) * 0.7) * T, (FROG.y + Math.sin(aim) * 0.7) * T);
+    ctx.lineTo((FROG.x + Math.cos(aim) * len) * T, (FROG.y + Math.sin(aim) * len) * T); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  for (const b of balls) {
+    if (b.ds <= VISIBLE - D) continue;
+    let p = pos(b.ds);
+    const a = tangent(b.ds);
+    if (b.fly) { const t = b.fly.t; p = { x: b.fly.x + (p.x - b.fly.x) * t, y: b.fly.y + (p.y - b.fly.y) * t }; }
+    if (tgt && tgt.b === b) drawBrick(ctx, p.x * T, p.y * T, a, BL * T + 4, BH * T + 6, COL.fg);
+    drawBall(ctx, p.x * T, p.y * T, a, b.c);
+  }
+  for (const sh of shots) drawMystery(ctx, sh.x * T, sh.y * T, Math.atan2(sh.vy, sh.vx), sh.c);
+
+  drawFrog();
+  if (tgt) {
+    const p = pos(tgt.b.ds), text = run.pal[tgt.b.c].de, fs = Math.max(12, Math.min(16, T * 0.26));
+    ctx.font = `700 ${fs}px ${FONT}`;
+    const lw = ctx.measureText(text).width + 16, lh = fs + 10;
+    const lx = Math.max(2, Math.min(W - lw - 2, p.x * T - lw / 2)), ly = Math.max(2, p.y * T - BL * T / 2 - lh - 4);
+    rr(ctx, lx, ly, lw, lh, 6); ctx.fillStyle = "rgba(20,26,46,.95)"; ctx.fill(); ctx.strokeStyle = BALL[tgt.b.c]; ctx.lineWidth = 1.5; ctx.stroke();
+    drawDe(ctx, text, lx + lw / 2, ly + lh / 2 + 1, fs);
+  }
+
+  for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; ctx.fillRect(p.x * T - 2, p.y * T - 2, 4, 4); }
+  ctx.globalAlpha = 1;
+  for (const f of floats) {
+    ctx.globalAlpha = Math.min(1, 1.8 - f.t / 0.75); ctx.fillStyle = f.c; ctx.font = `700 ${Math.min(f.size, W / 18)}px ${FONT}`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(f.text, f.x * T, f.y * T);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  if (paused && run) {
+    ctx.fillStyle = "rgba(11,14,26,.75)"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = COL.fg; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `700 ${Math.min(24, W / 18)}px ${FONT}`;
+    ctx.fillText("Paused · click, tap or press Esc to continue", W / 2, H / 2);
+  }
+}
+
+function drawFrog() {
+  const x = FROG.x * T, y = FROG.y * T, r = T * 0.55;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(aim);
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.283); ctx.fillStyle = COL.panel2; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = COL.line; ctx.stroke();
+  ctx.fillStyle = COL.line; ctx.fillRect(r * 0.2, -r * 0.42, r * 0.95, r * 0.84);
+  ctx.restore();
+  const a = run && run.ammo;
+  if (a && a[0] && run.phase === "play") {
+    drawMystery(ctx, x + Math.cos(aim) * (r + BL * T * 0.2), y + Math.sin(aim) * (r + BL * T * 0.2), aim, a[0].c);
+    // the meaning of the loaded ball, and the next one
+    const text = promptOf(run.pal[a[0].c]), fs = fitFont(ctx, text, T * 4.2, Math.max(13, Math.min(20, T * 0.34)), 10);
+    const lw = ctx.measureText(text).width + 18, lh = fs + 12, ly = y + r + 6;
+    rr(ctx, x - lw / 2, ly, lw, lh, 8); ctx.fillStyle = "rgba(42,34,16,.95)"; ctx.fill(); ctx.strokeStyle = COL.gold; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = COL.gold; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, x, ly + lh / 2 + 1);
+    if (a[1]) {
+      const t2 = "next: " + promptOf(run.pal[a[1].c]), f2 = fitFont(ctx, t2, T * 4.2, Math.max(10, Math.min(13, T * 0.22)), 9, 500);
+      ctx.fillStyle = COL.muted; ctx.fillText(t2, x, ly + lh + f2);
+    }
+  } else {
+    ctx.beginPath(); ctx.arc(x, y, T * 0.12, 0, 6.283); ctx.fillStyle = COL.gold; ctx.fill();
+  }
+}
+
+function loop(ts) {
+  const dt = Math.min(0.05, (ts - last) / 1000); last = ts;
+  if (run && !paused) update(dt);
+  if (!paused) tickEffects(dt);
+  draw(ts);
+  requestAnimationFrame(loop);
+}
+
+/* ---------- Panels ---------- */
+function renderHud() {
+  const t = `<span class="chip ${run.lives <= 1 ? "low" : ""}">Lives <b>${"♥".repeat(Math.max(0, run.lives))}</b></span>` +
+    `<span class="chip">Level <b>${run.level}</b></span><span class="chip">Words <b>${run.done} / ${run.total}</b></span>` +
+    `<span class="chip">Score <b>${run.score}</b>${run.combo > 1 ? ` ×${run.combo}` : ""}</span>`;
+  if (t !== hudText) { hudText = t; $("#hud").innerHTML = t; }
+}
+
+function renderQuiz() {
+  const q = $("#quiz");
+  if (!run) { q.innerHTML = ""; return; }
+  if (run.phase === "over") { q.innerHTML = `<h3>Game over</h3><p class="q-prompt">Out of lives</p>`; return; }
+  if (run.phase === "teach") {
+    const w = run.teach[run.ti].w;
+    q.innerHTML = `<h3 class="tag-new">New word ${run.ti + 1} of ${run.teach.length} · learn it before level ${run.level}</h3>
+      <div class="q-prompt">${esc(promptOf(w))}</div>
+      <p class="q-sub">in German:</p>
+      <div class="q-de">${deHTML(w.de)}</div>
+      ${otherOf(w) ? `<p class="q-sub">${esc(otherOf(w))}</p>` : ""}
+      <div class="q-acts"><button class="primary" data-act="next">Got it <kbd>Space</kbd></button><button class="ghost" data-act="say">Hear it again</button></div>`;
+    return;
+  }
+  if (run.phase === "ready") {
+    q.innerHTML = `<h3>Level ${run.level} · ${run.pal.length} words in the chain</h3>
+      <p class="hint">Each colour in the chain is one German word (see the legend). Your brick shows a word in ${settings.lang === "ro" ? "Romanian" : "English"}: shoot it next to its German colour.</p>
+      <div class="q-acts"><button class="primary" data-act="start">Start level ${run.level} <kbd>Space</kbd></button></div>`;
+    return;
+  }
+  if (run.phase === "drain") { q.innerHTML = `<h3 style="color:var(--bad)">The chain reached the hole</h3><p class="hint">You lose a life and the level starts over.</p>`; return; }
+  if (run.reveal) {
+    const r = run.reveal;
+    q.innerHTML = `<h3 style="color:var(--bad)">Not quite${r.hit ? ` · you hit ${esc(r.hit.de)} (${esc(promptOf(r.hit))})` : ""}</h3>
+      <div class="q-prompt">${esc(promptOf(r.w))}</div><p class="q-sub">is</p><div class="q-de">${deHTML(r.w.de)}</div>
+      <p class="q-sub">It stays in the chain in its own colour.</p>`;
+    return;
+  }
+  const a = run.ammo[0];
+  if (!a) { q.innerHTML = `<h3>Level ${run.level}</h3><p class="hint">Clear the last bricks.</p>`; return; }
+  const w = run.pal[a.c], s = run.steps[w.id]?.[0];
+  const tag = !s ? "Practice" : run.practice ? "Practice" : s.m === "review" ? "Review" : "Learning";
+  q.innerHTML = `<h3>${tag} · which German word?</h3>
+    <div class="q-prompt">${esc(promptOf(w))}</div>
+    <p class="hint" style="margin-top:8px">Shoot it next to the matching colour. Aim at a brick to read its word.</p>
+    ${run.ammo[1] ? `<p class="next">Next: ${esc(promptOf(run.pal[run.ammo[1].c]))} · swap with right click or <kbd>Space</kbd></p>` : ""}`;
+}
+$("#quiz").addEventListener("click", e => {
+  const btn = e.target.closest("button"); if (!btn || !run) return;
+  if (btn.dataset.act === "next") nextTeach();
+  if (btn.dataset.act === "say") speak(run.teach[run.ti].w);
+  if (btn.dataset.act === "start") startLevel();
+});
+
+function renderLegend() {
+  const p = $("#legend");
+  if (!run) { p.innerHTML = ""; legendText = ""; return; }
+  const count = c => balls.filter(b => b.c === c).length;
+  const playing = run.phase === "play" || run.phase === "drain";
+  const rows = run.pal.map((w, c) => ({ w, c, n: count(c) })).filter(r => !playing || r.n);
+  const html = `<h3>Words in the chain</h3><div class="legend">${rows.map(r =>
+    `<div><canvas data-c="${r.c}" width="44" height="44"></canvas><b>${deHTML(r.w.de)}</b><small>${playing ? r.n : ""}</small></div>`).join("")}</div>`;
+  if (html === legendText) return;
+  legendText = html; p.innerHTML = html;
+  p.querySelectorAll("canvas").forEach(c => drawBrick(c.getContext("2d"), 22, 22, 0, 42, 24, BALL[+c.dataset.c]));
+}
+setInterval(() => { if (run && run.phase === "play") renderLegend(); }, 400);
+
+function finish(complete) {
+  if (!run) return;
+  saveProgress();
+  const r = run; run = null; balls = []; shots = [];
+  $("#bar").hidden = true; $("#stage").classList.add("tall");
+  $("#over-title").textContent = complete ? (r.practice ? "Practice complete" : "Chain broken") : "Swallowed by the hole";
+  $("#over-stats").innerHTML = resultsHTML([["Score", r.score], ["Levels", r.cleared], ["Correct", r.ok], ["Mistakes", r.bad],
+    ["Best combo", r.maxCombo], ["Learned", r.learned.length], ["Lives", Math.max(0, r.lives) + " ♥"]]);
+  $("#over-learned").innerHTML = wordChips("Learned today, back for review tomorrow:", r.learned);
+  $("#over-weak").innerHTML = wordChips("Needs more work:", [...r.weak]);
+  $("#over").hidden = false;
+  $("#today").innerHTML = todayChips();
+}
+
+/* ---------- Input ---------- */
+function typing(e) { return /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName); }
+window.addEventListener("keydown", e => {
+  if (!run || typing(e)) return;
+  const k = e.key;
+  if (k === "Escape") { paused = !paused; return; }
+  if (paused) return;
+  if (k === "ArrowLeft" || k === "ArrowRight") { e.preventDefault(); keys[k] = true; }
+  if (k === "ArrowUp") { e.preventDefault(); fire(); }
+  if (k === " " || k === "Enter") {
+    if (e.target.tagName === "BUTTON" && k === "Enter") return;
+    e.preventDefault();
+    if (run.phase === "teach") nextTeach(); else if (run.phase === "ready") startLevel(); else if (k === " ") swap();
+  }
+});
+window.addEventListener("keyup", e => { keys[e.key] = false; });
+function aimAt(e) {
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * COLS, y = (e.clientY - r.top) / r.height * ROWS;
+  aim = Math.atan2(y - FROG.y, x - FROG.x);
+}
+// Touch: drag to aim and read the bricks, let go to shoot; a tap on the shooter swaps.
+let touchAim = false;
+function onFrog(e) {
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * COLS, y = (e.clientY - r.top) / r.height * ROWS;
+  return Math.hypot(x - FROG.x, y - FROG.y) < 0.9;
+}
+cv.addEventListener("pointermove", e => { if (run && !paused && (e.pointerType !== "touch" || touchAim)) aimAt(e); });
+cv.addEventListener("pointerdown", e => {
+  if (!run) return;
+  if (paused) { paused = false; return; }
+  if (e.pointerType === "touch") {
+    if (onFrog(e)) { swap(); return; }
+    touchAim = true; cv.setPointerCapture(e.pointerId); aimAt(e); return;
+  }
+  if (e.button === 2) { swap(); return; }
+  aimAt(e); fire();
+});
+cv.addEventListener("pointerup", e => { if (!touchAim) return; touchAim = false; if (run && !paused) { aimAt(e); fire(); } });
+cv.addEventListener("pointercancel", () => { touchAim = false; });
+cv.addEventListener("contextmenu", e => e.preventDefault());
+document.addEventListener("visibilitychange", () => { if (document.hidden && run) paused = true; });
+window.addEventListener("blur", () => { keys = {}; if (run) paused = true; });
+
+/* ---------- Menu & boot ---------- */
+$("#btn-start").onclick = startRun;
+$("#btn-again").onclick = startRun;
+$("#btn-menu").onclick = () => { $("#over").hidden = true; $("#menu").hidden = false; $("#today").innerHTML = todayChips(); };
+bindSettings(() => $("#today").innerHTML = todayChips());
+loadWords().then(ok => {
+  if (!ok) { $("#today").innerHTML = `<span class="chip">No word list yet: open the <a href="index.html" style="color:var(--gold)">Shooter</a> once to load it</span>`; $("#btn-start").disabled = true; return; }
+  $("#today").innerHTML = todayChips();
+});
+resize();
+requestAnimationFrame(t => { last = t; loop(t); });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>

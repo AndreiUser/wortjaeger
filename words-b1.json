@@ -1,0 +1,1149 @@
+{
+  "app": "wortjaeger",
+  "version": 2,
+  "words": [
+    {
+      "id": "w001",
+      "de": "die Erfahrung",
+      "ro": "experiență",
+      "en": "experience",
+      "pos": "noun",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w002",
+      "de": "die Ausbildung",
+      "ro": "formare profesională",
+      "en": "vocational training",
+      "pos": "noun",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w003",
+      "de": "die Bewerbung",
+      "ro": "candidatură",
+      "en": "job application",
+      "pos": "noun",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w004",
+      "de": "der Vertrag",
+      "ro": "contract",
+      "en": "contract",
+      "pos": "noun",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w005",
+      "de": "die Gelegenheit",
+      "ro": "ocazie",
+      "en": "opportunity",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w006",
+      "de": "die Umwelt",
+      "ro": "mediu înconjurător",
+      "en": "environment",
+      "pos": "noun",
+      "topic": "society",
+      "active": true
+    },
+    {
+      "id": "w007",
+      "de": "die Gesellschaft",
+      "ro": "societate",
+      "en": "society",
+      "pos": "noun",
+      "topic": "society",
+      "active": true
+    },
+    {
+      "id": "w008",
+      "de": "die Entscheidung",
+      "ro": "decizie",
+      "en": "decision",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w009",
+      "de": "der Vorschlag",
+      "ro": "propunere",
+      "en": "suggestion",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w010",
+      "de": "die Meinung",
+      "ro": "părere",
+      "en": "opinion",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w011",
+      "de": "der Unterschied",
+      "ro": "diferență",
+      "en": "difference",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w012",
+      "de": "die Voraussetzung",
+      "ro": "condiție prealabilă",
+      "en": "prerequisite",
+      "pos": "noun",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w013",
+      "de": "die Verantwortung",
+      "ro": "responsabilitate",
+      "en": "responsibility",
+      "pos": "noun",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w014",
+      "de": "die Ursache",
+      "ro": "cauză",
+      "en": "cause",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w015",
+      "de": "die Folge",
+      "ro": "urmare",
+      "en": "consequence",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w016",
+      "de": "der Zusammenhang",
+      "ro": "legătură",
+      "en": "connection, context",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w017",
+      "de": "die Beziehung",
+      "ro": "relație",
+      "en": "relationship",
+      "pos": "noun",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "w018",
+      "de": "das Gehalt",
+      "ro": "salariu",
+      "en": "salary",
+      "pos": "noun",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w019",
+      "de": "die Miete",
+      "ro": "chirie",
+      "en": "rent",
+      "pos": "noun",
+      "topic": "home",
+      "active": true
+    },
+    {
+      "id": "w020",
+      "de": "der Vermieter",
+      "ro": "proprietar (care închiriază)",
+      "en": "landlord",
+      "pos": "noun",
+      "topic": "home",
+      "active": true
+    },
+    {
+      "id": "w021",
+      "de": "die Kündigung",
+      "ro": "reziliere, concediere",
+      "en": "notice of termination",
+      "pos": "noun",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w022",
+      "de": "die Versicherung",
+      "ro": "asigurare",
+      "en": "insurance",
+      "pos": "noun",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "w023",
+      "de": "die Rechnung",
+      "ro": "factură",
+      "en": "bill, invoice",
+      "pos": "noun",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "w024",
+      "de": "die Quittung",
+      "ro": "chitanță",
+      "en": "receipt",
+      "pos": "noun",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "w025",
+      "de": "der Termin",
+      "ro": "programare",
+      "en": "appointment",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w026",
+      "de": "die Verspätung",
+      "ro": "întârziere",
+      "en": "delay",
+      "pos": "noun",
+      "topic": "travel",
+      "active": true
+    },
+    {
+      "id": "w027",
+      "de": "die Abfahrt",
+      "ro": "plecare",
+      "en": "departure",
+      "pos": "noun",
+      "topic": "travel",
+      "active": true
+    },
+    {
+      "id": "w028",
+      "de": "die Ankunft",
+      "ro": "sosire",
+      "en": "arrival",
+      "pos": "noun",
+      "topic": "travel",
+      "active": true
+    },
+    {
+      "id": "w029",
+      "de": "das Gepäck",
+      "ro": "bagaj",
+      "en": "luggage",
+      "pos": "noun",
+      "topic": "travel",
+      "active": true
+    },
+    {
+      "id": "w030",
+      "de": "die Unterkunft",
+      "ro": "cazare",
+      "en": "accommodation",
+      "pos": "noun",
+      "topic": "travel",
+      "active": true
+    },
+    {
+      "id": "w031",
+      "de": "die Sehenswürdigkeit",
+      "ro": "obiectiv turistic",
+      "en": "sight, attraction",
+      "pos": "noun",
+      "topic": "travel",
+      "active": true
+    },
+    {
+      "id": "w032",
+      "de": "die Gesundheit",
+      "ro": "sănătate",
+      "en": "health",
+      "pos": "noun",
+      "topic": "health",
+      "active": true
+    },
+    {
+      "id": "w033",
+      "de": "die Krankheit",
+      "ro": "boală",
+      "en": "illness",
+      "pos": "noun",
+      "topic": "health",
+      "active": true
+    },
+    {
+      "id": "w034",
+      "de": "das Rezept",
+      "ro": "rețetă",
+      "en": "prescription, recipe",
+      "pos": "noun",
+      "topic": "health",
+      "active": true
+    },
+    {
+      "id": "w035",
+      "de": "die Erkältung",
+      "ro": "răceală",
+      "en": "cold (illness)",
+      "pos": "noun",
+      "topic": "health",
+      "active": true
+    },
+    {
+      "id": "w036",
+      "de": "die Verletzung",
+      "ro": "rănire",
+      "en": "injury",
+      "pos": "noun",
+      "topic": "health",
+      "active": true
+    },
+    {
+      "id": "w037",
+      "de": "der Schmerz",
+      "ro": "durere",
+      "en": "pain",
+      "pos": "noun",
+      "topic": "health",
+      "active": true
+    },
+    {
+      "id": "w038",
+      "de": "die Zukunft",
+      "ro": "viitor",
+      "en": "future",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w039",
+      "de": "die Vergangenheit",
+      "ro": "trecut",
+      "en": "past",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w040",
+      "de": "das Ereignis",
+      "ro": "întâmplare",
+      "en": "occurrence, event",
+      "pos": "noun",
+      "topic": "media",
+      "active": true
+    },
+    {
+      "id": "w041",
+      "de": "die Veranstaltung",
+      "ro": "eveniment organizat",
+      "en": "organised event",
+      "pos": "noun",
+      "topic": "society",
+      "active": true
+    },
+    {
+      "id": "w042",
+      "de": "der Verein",
+      "ro": "asociație, club",
+      "en": "club, association",
+      "pos": "noun",
+      "topic": "society",
+      "active": true
+    },
+    {
+      "id": "w043",
+      "de": "das Ehrenamt",
+      "ro": "voluntariat",
+      "en": "volunteer work",
+      "pos": "noun",
+      "topic": "society",
+      "active": true
+    },
+    {
+      "id": "w044",
+      "de": "die Nachricht",
+      "ro": "știre, mesaj",
+      "en": "news, message",
+      "pos": "noun",
+      "topic": "media",
+      "active": true
+    },
+    {
+      "id": "w045",
+      "de": "die Zeitschrift",
+      "ro": "revistă",
+      "en": "magazine",
+      "pos": "noun",
+      "topic": "media",
+      "active": true
+    },
+    {
+      "id": "w046",
+      "de": "die Werbung",
+      "ro": "reclamă",
+      "en": "advertising",
+      "pos": "noun",
+      "topic": "media",
+      "active": true
+    },
+    {
+      "id": "w047",
+      "de": "die Ware",
+      "ro": "marfă",
+      "en": "goods",
+      "pos": "noun",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "w048",
+      "de": "das Angebot",
+      "ro": "ofertă",
+      "en": "offer",
+      "pos": "noun",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "w049",
+      "de": "die Nachfrage",
+      "ro": "cerere (pe piață)",
+      "en": "demand",
+      "pos": "noun",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "w050",
+      "de": "der Kunde",
+      "ro": "client",
+      "en": "customer",
+      "pos": "noun",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "w051",
+      "de": "die Reklamation",
+      "ro": "reclamație",
+      "en": "complaint (about a product)",
+      "pos": "noun",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "w052",
+      "de": "der Umzug",
+      "ro": "mutare (cu locuința)",
+      "en": "move (house)",
+      "pos": "noun",
+      "topic": "home",
+      "active": true
+    },
+    {
+      "id": "w053",
+      "de": "der Haushalt",
+      "ro": "gospodărie",
+      "en": "household",
+      "pos": "noun",
+      "topic": "home",
+      "active": true
+    },
+    {
+      "id": "w054",
+      "de": "die Pflicht",
+      "ro": "obligație",
+      "en": "duty",
+      "pos": "noun",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "w055",
+      "de": "das Recht",
+      "ro": "drept",
+      "en": "right, law",
+      "pos": "noun",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "w056",
+      "de": "das Gesetz",
+      "ro": "lege",
+      "en": "law (statute)",
+      "pos": "noun",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "w057",
+      "de": "die Behörde",
+      "ro": "autoritate publică",
+      "en": "public authority",
+      "pos": "noun",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "w058",
+      "de": "der Antrag",
+      "ro": "cerere oficială",
+      "en": "application form",
+      "pos": "noun",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "w059",
+      "de": "die Genehmigung",
+      "ro": "autorizație",
+      "en": "permit",
+      "pos": "noun",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "w060",
+      "de": "das Ziel",
+      "ro": "obiectiv, țintă",
+      "en": "goal",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w061",
+      "de": "der Erfolg",
+      "ro": "succes",
+      "en": "success",
+      "pos": "noun",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w062",
+      "de": "die Mühe",
+      "ro": "efort, osteneală",
+      "en": "effort",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w063",
+      "de": "die Geduld",
+      "ro": "răbdare",
+      "en": "patience",
+      "pos": "noun",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "w064",
+      "de": "das Vertrauen",
+      "ro": "încredere",
+      "en": "trust",
+      "pos": "noun",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "w065",
+      "de": "der Streit",
+      "ro": "ceartă",
+      "en": "argument, quarrel",
+      "pos": "noun",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "w066",
+      "de": "die Lösung",
+      "ro": "soluție",
+      "en": "solution",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w067",
+      "de": "die Ahnung",
+      "ro": "habar, bănuială",
+      "en": "idea, clue",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w068",
+      "de": "die Ausnahme",
+      "ro": "excepție",
+      "en": "exception",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w069",
+      "de": "der Zweck",
+      "ro": "scop",
+      "en": "purpose",
+      "pos": "noun",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w070",
+      "de": "das Verhalten",
+      "ro": "comportament",
+      "en": "behaviour",
+      "pos": "noun",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "w071",
+      "de": "sich bewerben",
+      "ro": "a candida",
+      "en": "to apply (for a job)",
+      "pos": "verb",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w072",
+      "de": "vergleichen",
+      "ro": "a compara",
+      "en": "to compare",
+      "pos": "verb",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w073",
+      "de": "sich beschweren",
+      "ro": "a se plânge",
+      "en": "to complain",
+      "pos": "verb",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "w074",
+      "de": "erledigen",
+      "ro": "a rezolva (o sarcină)",
+      "en": "to get done",
+      "pos": "verb",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w075",
+      "de": "verschieben",
+      "ro": "a amâna",
+      "en": "to postpone",
+      "pos": "verb",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w076",
+      "de": "vermeiden",
+      "ro": "a evita",
+      "en": "to avoid",
+      "pos": "verb",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w077",
+      "de": "sich erinnern",
+      "ro": "a-și aminti",
+      "en": "to remember",
+      "pos": "verb",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w078",
+      "de": "überzeugen",
+      "ro": "a convinge",
+      "en": "to convince",
+      "pos": "verb",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w079",
+      "de": "sich gewöhnen an",
+      "ro": "a se obișnui cu",
+      "en": "to get used to",
+      "pos": "verb",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w080",
+      "de": "empfehlen",
+      "ro": "a recomanda",
+      "en": "to recommend",
+      "pos": "verb",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w081",
+      "de": "beantragen",
+      "ro": "a solicita oficial",
+      "en": "to apply for (officially)",
+      "pos": "verb",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "w082",
+      "de": "zunehmen",
+      "ro": "a crește; a se îngrășa",
+      "en": "to increase; to gain weight",
+      "pos": "verb",
+      "topic": "health",
+      "active": true
+    },
+    {
+      "id": "w083",
+      "de": "sich verlassen auf",
+      "ro": "a se baza pe",
+      "en": "to rely on",
+      "pos": "verb",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "w084",
+      "de": "verdienen",
+      "ro": "a câștiga (bani)",
+      "en": "to earn",
+      "pos": "verb",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w085",
+      "de": "sparen",
+      "ro": "a economisi",
+      "en": "to save (money)",
+      "pos": "verb",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "w086",
+      "de": "teilnehmen",
+      "ro": "a participa",
+      "en": "to take part",
+      "pos": "verb",
+      "topic": "society",
+      "active": true
+    },
+    {
+      "id": "w087",
+      "de": "zuverlässig",
+      "ro": "de nădejde",
+      "en": "reliable",
+      "pos": "adj",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w088",
+      "de": "pünktlich",
+      "ro": "punctual",
+      "en": "on time",
+      "pos": "adj",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w089",
+      "de": "ehrlich",
+      "ro": "sincer, cinstit",
+      "en": "honest",
+      "pos": "adj",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "w090",
+      "de": "neugierig",
+      "ro": "curios",
+      "en": "curious",
+      "pos": "adj",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "w091",
+      "de": "vorsichtig",
+      "ro": "prudent",
+      "en": "careful",
+      "pos": "adj",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w092",
+      "de": "selbstständig",
+      "ro": "independent",
+      "en": "independent, self-employed",
+      "pos": "adj",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "w093",
+      "de": "gleichzeitig",
+      "ro": "simultan",
+      "en": "at the same time",
+      "pos": "adv",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w094",
+      "de": "ehemalig",
+      "ro": "fost (de odinioară)",
+      "en": "former",
+      "pos": "adj",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w095",
+      "de": "wahrscheinlich",
+      "ro": "probabil",
+      "en": "probably",
+      "pos": "adv",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w096",
+      "de": "ausreichend",
+      "ro": "suficient",
+      "en": "sufficient",
+      "pos": "adj",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w097",
+      "de": "anstrengend",
+      "ro": "obositor",
+      "en": "exhausting",
+      "pos": "adj",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w098",
+      "de": "umständlich",
+      "ro": "complicat, greoi",
+      "en": "cumbersome",
+      "pos": "adj",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "w099",
+      "de": "enttäuscht",
+      "ro": "dezamăgit",
+      "en": "disappointed",
+      "pos": "adj",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "w100",
+      "de": "erfolgreich",
+      "ro": "de succes",
+      "en": "successful",
+      "pos": "adj",
+      "topic": "work",
+      "active": true
+    }
+  ],
+  "phrases": [
+    {
+      "id": "p001",
+      "de": "eine Entscheidung treffen",
+      "ro": "a lua o decizie",
+      "en": "to make a decision",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "p002",
+      "de": "Erfahrung sammeln",
+      "ro": "a acumula experiență",
+      "en": "to gain experience",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "p003",
+      "de": "einen Termin vereinbaren",
+      "ro": "a stabili o programare",
+      "en": "to make an appointment",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "p004",
+      "de": "einen Antrag stellen",
+      "ro": "a depune o cerere",
+      "en": "to submit an application",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "p005",
+      "de": "einen Vertrag unterschreiben",
+      "ro": "a semna un contract",
+      "en": "to sign a contract",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "p006",
+      "de": "die Miete zahlen",
+      "ro": "a plăti chiria",
+      "en": "to pay the rent",
+      "topic": "home",
+      "active": true
+    },
+    {
+      "id": "p007",
+      "de": "Verantwortung übernehmen",
+      "ro": "a-și asuma responsabilitatea",
+      "en": "to take responsibility",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "p008",
+      "de": "einen Vorschlag machen",
+      "ro": "a face o propunere",
+      "en": "to make a suggestion",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "p009",
+      "de": "eine Lösung finden",
+      "ro": "a găsi o soluție",
+      "en": "to find a solution",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "p010",
+      "de": "Geduld haben",
+      "ro": "a avea răbdare",
+      "en": "to be patient",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "p011",
+      "de": "keine Ahnung haben",
+      "ro": "a nu avea habar",
+      "en": "to have no idea",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "p012",
+      "de": "eine Ausnahme machen",
+      "ro": "a face o excepție",
+      "en": "to make an exception",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "p013",
+      "de": "die Rechnung bezahlen",
+      "ro": "a plăti factura",
+      "en": "to pay the bill",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "p014",
+      "de": "eine Versicherung abschließen",
+      "ro": "a încheia o asigurare",
+      "en": "to take out insurance",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "p015",
+      "de": "eine Genehmigung bekommen",
+      "ro": "a obține o autorizație",
+      "en": "to get a permit",
+      "topic": "law",
+      "active": true
+    },
+    {
+      "id": "p016",
+      "de": "ein Ziel erreichen",
+      "ro": "a atinge un obiectiv",
+      "en": "to reach a goal",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "p017",
+      "de": "großen Erfolg haben",
+      "ro": "a avea mare succes",
+      "en": "to be very successful",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "p018",
+      "de": "die Umwelt schützen",
+      "ro": "a proteja mediul",
+      "en": "to protect the environment",
+      "topic": "society",
+      "active": true
+    },
+    {
+      "id": "p019",
+      "de": "einen Streit vermeiden",
+      "ro": "a evita o ceartă",
+      "en": "to avoid an argument",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "p020",
+      "de": "den Termin verschieben",
+      "ro": "a amâna programarea",
+      "en": "to postpone the appointment",
+      "topic": "everyday",
+      "active": true
+    },
+    {
+      "id": "p021",
+      "de": "eine günstige Unterkunft",
+      "ro": "o cazare ieftină",
+      "en": "cheap accommodation",
+      "topic": "travel",
+      "active": true
+    },
+    {
+      "id": "p022",
+      "de": "ein gutes Angebot",
+      "ro": "o ofertă bună",
+      "en": "a good offer",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "p023",
+      "de": "eine wichtige Nachricht",
+      "ro": "un mesaj important",
+      "en": "an important message",
+      "topic": "media",
+      "active": true
+    },
+    {
+      "id": "p024",
+      "de": "ein zuverlässiger Kollege",
+      "ro": "un coleg de nădejde",
+      "en": "a reliable colleague",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "p025",
+      "de": "das Gepäck abholen",
+      "ro": "a ridica bagajul",
+      "en": "to collect the luggage",
+      "topic": "travel",
+      "active": true
+    },
+    {
+      "id": "p026",
+      "de": "Geld sparen",
+      "ro": "a economisi bani",
+      "en": "to save money",
+      "topic": "shopping",
+      "active": true
+    },
+    {
+      "id": "p027",
+      "de": "gut verdienen",
+      "ro": "a câștiga bine",
+      "en": "to earn well",
+      "topic": "work",
+      "active": true
+    },
+    {
+      "id": "p028",
+      "de": "eine Erkältung haben",
+      "ro": "a fi răcit",
+      "en": "to have a cold",
+      "topic": "health",
+      "active": true
+    },
+    {
+      "id": "p029",
+      "de": "sehr enttäuscht sein",
+      "ro": "a fi foarte dezamăgit",
+      "en": "to be very disappointed",
+      "topic": "feelings",
+      "active": true
+    },
+    {
+      "id": "p030",
+      "de": "einen Unterschied machen",
+      "ro": "a face diferența",
+      "en": "to make a difference",
+      "topic": "everyday",
+      "active": true
+    }
+  ],
+  "progress": {}
+}

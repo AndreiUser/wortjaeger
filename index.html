@@ -1,0 +1,1580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wortjäger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one top bar, two views (game stage / register), single dark arcade look */
+:root {
+  --bg: #0b0e1a;
+  --panel: #141a2e;
+  --panel-2: #1b2340;
+  --line: #2a3456;
+  --fg: #e9ecf5;
+  --muted: #8a93b3;
+  --gold: #ffc94a;
+  --ok: #5be0a0;
+  --bad: #ff5d73;
+  --der: #6aa8ff;
+  --die: #ff7a9a;
+  --das: #5be0a0;
+  --f-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "DejaVu Sans Mono", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.5 var(--f-body);
+  min-height: 100vh;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.top {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px max(16px, env(safe-area-inset-left)) 12px max(16px, env(safe-area-inset-right));
+  border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.brand { font: 700 22px/1 var(--f-display); letter-spacing: .02em; }
+.brand span { display: inline-block; margin-left: 10px; font: 500 12px/1 var(--f-mono); color: var(--muted); letter-spacing: .06em; text-transform: uppercase; vertical-align: middle; }
+.brand b { color: var(--gold); font-weight: 700; }
+.tabs, .seg { display: flex; gap: 4px; background: var(--bg); padding: 4px; border-radius: 10px; border: 1px solid var(--line); }
+.tab, .seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 7px; color: var(--muted); font-weight: 500; text-decoration: none; }
+.tabs { flex-wrap: wrap; }
+.tab.on, .seg button.on { background: var(--panel-2); color: var(--fg); }
+
+main { max-width: 1100px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-left)) 32px max(16px, env(safe-area-inset-right)); }
+
+/* Game */
+.stage { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--bg); }
+#cv { display: block; width: 100%; touch-action: none; cursor: crosshair; }
+.overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: 24px 16px; text-align: center; background: rgba(11, 14, 26, .9); overflow-y: auto;
+}
+.overlay h1 { margin: 0; font: 700 clamp(34px, 7vw, 56px)/1 var(--f-display); letter-spacing: .02em; }
+.overlay h1 b { color: var(--gold); }
+.overlay h2 { margin: 0; font: 700 30px/1.1 var(--f-display); }
+.lede { margin: 0; max-width: 52ch; color: var(--muted); }
+.howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; width: min(720px, 100%); text-align: left; }
+.howto div { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--muted); }
+.howto strong { display: block; color: var(--fg); font: 700 14px/1.3 var(--f-display); margin-bottom: 2px; }
+.today { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.chip { font: 500 13px/1 var(--f-mono); padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); }
+.chip b { color: var(--gold); font-weight: 500; }
+.opts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 18px; font-size: 14px; color: var(--muted); }
+.opts label { display: flex; align-items: center; gap: 8px; }
+select, input[type="text"], input[type="search"] {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; min-width: 0;
+}
+.big {
+  border: 0; border-radius: 12px; padding: 14px 34px; background: var(--gold); color: #1a1405;
+  font: 700 20px/1 var(--f-display); letter-spacing: .04em; text-transform: uppercase;
+  box-shadow: 0 0 0 4px rgba(255, 201, 74, .18);
+}
+.big:hover { filter: brightness(1.08); }
+.keys { margin: 0; font: 12px/1.5 var(--f-mono); color: var(--muted); }
+.ghost { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 14px; }
+.ghost:hover { border-color: var(--muted); }
+.result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; width: min(640px, 100%); }
+.result-grid div { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.result-grid strong { display: block; font: 700 26px/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.result-grid span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.wordlist { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 640px; }
+.wordlist > span { font-size: 13px; padding: 3px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); }
+.row-btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+/* Weapon selector */
+.weapons { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 6px; }
+.wpn {
+  display: flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); background: rgba(20, 26, 46, .85);
+  border-radius: 9px; padding: 5px 10px; font: 700 14px/1 var(--f-display); color: var(--muted);
+}
+.wpn kbd { font: 500 10px/1 var(--f-mono); padding: 2px 4px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.wpn.der.on { border-color: var(--der); color: var(--der); }
+.wpn.die.on { border-color: var(--die); color: var(--die); }
+.wpn.das.on { border-color: var(--das); color: var(--das); }
+.wpn.on { background: var(--panel-2); }
+
+/* Register */
+.reg-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.reg-head h2 { margin: 0; font: 700 24px/1.1 var(--f-display); }
+.reg-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; max-width: 60ch; }
+.reg-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+.card h3 { margin: 0 0 10px; font: 700 13px/1 var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.addform { display: grid; grid-template-columns: 1.3fr 1fr 1fr .8fr .9fr auto; gap: 8px; }
+.addform.phr { grid-template-columns: 1.6fr 1.2fr 1.2fr .9fr auto; }
+.addform input, .addform select { width: 100%; }
+@media (max-width: 760px) { .addform, .addform.phr { grid-template-columns: 1fr 1fr; } .addform .wide { grid-column: 1 / -1; } .reg-side { align-items: flex-start; } .stats { justify-content: flex-start; } }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toolbar .grow { flex: 1 1 200px; }
+.toolbar .grow input { width: 100%; }
+.primary { border: 0; background: var(--gold); color: #1a1405; font-weight: 600; border-radius: 8px; padding: 7px 16px; }
+.danger { border: 1px solid var(--bad); color: var(--bad); background: transparent; border-radius: 8px; padding: 7px 14px; }
+.confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--bad); border-radius: 10px; font-size: 14px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font: 500 11px/1 var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); background: var(--panel); position: sticky; top: 0; }
+tbody tr:hover { background: rgba(255, 255, 255, .02); }
+tr.off td:not(:first-child) { opacity: .45; }
+td input[type="text"], td select { width: 100%; min-width: 90px; }
+.de { font-weight: 600; white-space: nowrap; }
+.art-der { color: var(--der); } .art-die { color: var(--die); } .art-das { color: var(--das); }
+.pos { font: 12px var(--f-mono); color: var(--muted); }
+.pips { display: inline-flex; gap: 3px; vertical-align: middle; margin-right: 8px; }
+.pips i { width: 8px; height: 8px; border-radius: 2px; background: var(--line); }
+.pips i.on { background: var(--ok); }
+.due { font: 12px var(--f-mono); color: var(--muted); white-space: nowrap; }
+.due.now { color: var(--gold); }
+.acts { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+.acts button { border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 3px 9px; font-size: 13px; }
+.acts .yes { border-color: var(--bad); color: var(--bad); }
+.acts .save { border-color: var(--ok); color: var(--ok); }
+.empty { padding: 28px; text-align: center; color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+.toast {
+  position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; font-size: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .4); max-width: calc(100% - 32px);
+}
+/* Import from a German text */
+details.card > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary h3 { margin: 0; }
+details.card > summary::after { content: "+"; font: 700 18px/1 var(--f-mono); color: var(--muted); }
+details.card[open] > summary::after { content: "−"; }
+details.card[open] > summary { margin-bottom: 12px; }
+.tx textarea { width: 100%; min-height: 150px; resize: vertical; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; color: inherit; }
+.tx-row { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 10px; font-size: 14px; color: var(--muted); }
+.tx-row label { display: flex; align-items: center; gap: 8px; }
+.tx-row .grow { flex: 1 1 220px; }
+.tx-row .grow input { width: 100%; }
+.tx-alt { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.tx-alt summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+.tx-alt textarea { min-height: 90px; margin-top: 8px; font: 13px/1.4 var(--f-mono); }
+.tx-status { margin: 10px 0 0; font-size: 14px; }
+.tx-status.bad { color: var(--bad); }
+.tx-review { margin-top: 14px; }
+.tx-review h4 { margin: 14px 0 6px; font: 700 13px/1 var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.tx-review tr.dup td { opacity: .45; }
+.tx-review .ex { font-size: 12px; color: var(--muted); font-style: italic; }
+.tx-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">Wort<b>jäger</b><span>B1 · RO / EN → DE</span></div>
+  <nav class="tabs" aria-label="Views">
+    <button class="tab on" id="tab-game" data-view="game">Shooter</button>
+    <a class="tab" href="tower.html">Tower</a>
+    <a class="tab" href="zuma.html">Chain</a>
+    <a class="tab" href="platform.html">Platformer</a>
+    <button class="tab" id="tab-reg" data-view="reg">Register</button>
+  </nav>
+</header>
+
+<main>
+  <section id="view-game" aria-label="Game">
+    <div class="stage" id="stage">
+      <canvas id="cv"></canvas>
+
+      <div class="weapons" id="weapons" hidden>
+        <button class="wpn der on" data-w="0" title="der (key 1)"><kbd>1</kbd>der</button>
+        <button class="wpn die" data-w="1" title="die (key 2)"><kbd>2</kbd>die</button>
+        <button class="wpn das" data-w="2" title="das (key 3)"><kbd>3</kbd>das</button>
+      </div>
+
+      <div class="overlay" id="menu">
+        <h1>Wort<b>jäger</b></h1>
+        <p class="lede">A Romanian or English word appears at the top. Shoot the German word that matches it.</p>
+        <div class="howto">
+          <div><strong>Golden cards</strong>New words and phrases. Shoot the card to learn it.</div>
+          <div><strong>Shielded nouns</strong>Hit the right word to crack the shield, then hit it again with the right article gun: 1 der · 2 die · 3 das.</div>
+          <div><strong>Phrases</strong>Unlock after 8 known words. Shoot the pieces in the right order and avoid the traps.</div>
+          <div><strong>Levels</strong>Every 6 correct answers it gets faster. From level 3, dodge or shoot the meteors to keep your combo.</div>
+        </div>
+        <div class="today" id="today"></div>
+        <div class="opts">
+          <label>Prompt language
+            <select id="set-lang"><option value="ro">Română</option><option value="en">English</option></select>
+          </label>
+          <label>New words per run
+            <select id="set-new"><option>3</option><option>5</option><option>8</option><option>12</option></select>
+          </label>
+          <label><input type="checkbox" id="set-voice"> Speak German</label>
+        </div>
+        <button class="big" id="btn-start">Start run</button>
+        <p class="keys">Move: ← → or A / D, mouse or finger · Shoot: Space, click or tap · Switch article: 1 2 3, Q / E or mouse wheel · Pause: Esc</p>
+      </div>
+
+      <div class="overlay" id="over" hidden>
+        <h2 id="over-title">Run complete</h2>
+        <div class="result-grid" id="over-stats"></div>
+        <div id="over-learned"></div>
+        <div id="over-weak"></div>
+        <div class="row-btns">
+          <button class="big" id="btn-again">Play again</button>
+          <button class="ghost" id="btn-menu">Menu</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-reg" aria-label="Register" hidden>
+    <div class="reg-head">
+      <div>
+        <h2 id="reg-title">Word register</h2>
+        <p id="reg-desc"></p>
+      </div>
+      <div class="reg-side">
+        <div class="seg" role="group" aria-label="Register">
+          <button id="seg-words" class="on" data-coll="words">Words</button>
+          <button id="seg-phrases" data-coll="phrases">Phrases</button>
+        </div>
+        <div class="stats" id="reg-stats"></div>
+      </div>
+    </div>
+
+    <details class="card tx" id="tx-card">
+      <summary><h3>Import from a German text</h3></summary>
+      <textarea id="tx-text" placeholder="Paste a German text here: an article, an email, a page from a book…" aria-label="German text"></textarea>
+      <div class="tx-row">
+        <label class="grow">Name <input type="text" id="tx-name" placeholder="e.g. Mietvertrag (used as the topic)"></label>
+        <label>Words <select id="tx-nw"><option>10</option><option selected>20</option><option>30</option><option>50</option></select></label>
+        <label>Phrases <select id="tx-np"><option>5</option><option selected>10</option><option>15</option><option>25</option></select></label>
+        <label>Phrase length
+          <select id="tx-len"><option value="short">short (2–4 words)</option><option value="mixed" selected>mixed (2–8 words)</option><option value="long">long (5–8 words)</option></select>
+        </label>
+        <label><input type="checkbox" id="tx-basic" checked> Skip basic A1–A2 words</label>
+      </div>
+      <div class="tx-row">
+        <label class="grow">API key <input type="password" id="tx-key" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off"></label>
+        <button class="primary" id="tx-go">Find words and phrases</button>
+        <button class="ghost" id="tx-forget" hidden>Forget key</button>
+      </div>
+      <p class="note">Claude reads the text and suggests words and phrases with Romanian and English translations. Your key is kept only in this browser and is sent only to api.anthropic.com. Each text costs a few cents of API credit; long texts cost more.</p>
+      <details class="tx-alt">
+        <summary>No API key? Use any chat assistant instead</summary>
+        <p class="note">Copy the prompt, paste it into Claude (or another chat assistant), then paste the whole reply below.</p>
+        <div class="tx-actions"><button class="ghost" id="tx-copy">Copy prompt</button></div>
+        <textarea id="tx-reply" placeholder="Paste the reply here" aria-label="Assistant reply"></textarea>
+        <div class="tx-actions"><button class="ghost" id="tx-read">Read reply</button></div>
+      </details>
+      <p class="tx-status" id="tx-status" role="status" aria-live="polite"></p>
+      <div class="tx-review" id="tx-review"></div>
+    </details>
+    <div class="card">
+      <h3 id="add-title">Add a word</h3>
+      <form class="addform" id="addform" autocomplete="off">
+        <input type="text" id="add-de" placeholder="German, e.g. die Erfahrung" class="wide">
+        <input type="text" id="add-ro" placeholder="Română">
+        <input type="text" id="add-en" placeholder="English">
+        <select id="add-pos" aria-label="Type">
+          <option value="noun">noun</option><option value="verb">verb</option><option value="adj">adjective</option><option value="adv">adverb</option><option value="other">other</option>
+        </select>
+        <input type="text" id="add-topic" placeholder="Topic">
+        <button class="primary" type="submit">Add</button>
+      </form>
+      <p class="note" id="add-note"></p>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="grow"><input type="search" id="reg-search" placeholder="Search German, Romanian, English or topic" aria-label="Search"></div>
+        <select id="reg-filter" aria-label="Filter">
+          <option value="all">All</option>
+          <option value="new">Not seen yet</option>
+          <option value="learning">Learning</option>
+          <option value="due">Due today</option>
+          <option value="known">Known</option>
+          <option value="mastered">Mastered</option>
+          <option value="art">Article mistakes</option>
+          <option value="off">Switched off</option>
+        </select>
+        <button class="ghost" id="btn-export">Export JSON</button>
+        <button class="ghost" id="btn-import">Import JSON</button>
+        <input type="file" id="file-import" accept=".json,application/json" hidden>
+        <button class="ghost" id="btn-restore">Restore starter list</button>
+        <button class="danger" id="btn-reset">Reset progress</button>
+      </div>
+      <div id="confirm-slot"></div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>On</th><th>German</th><th>Română</th><th>English</th><th>Type</th><th>Topic</th><th>Progress</th><th></th></tr></thead>
+        <tbody id="reg-body"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- Starter database. Edits are stored in the browser; these lists are only used on first run or by "Restore starter list". -->
+<script type="application/json" id="seed">
+[
+{"id":"w001","de":"die Erfahrung","ro":"experiență","en":"experience","pos":"noun","topic":"work"},
+{"id":"w002","de":"die Ausbildung","ro":"formare profesională","en":"vocational training","pos":"noun","topic":"work"},
+{"id":"w003","de":"die Bewerbung","ro":"candidatură","en":"job application","pos":"noun","topic":"work"},
+{"id":"w004","de":"der Vertrag","ro":"contract","en":"contract","pos":"noun","topic":"work"},
+{"id":"w005","de":"die Gelegenheit","ro":"ocazie","en":"opportunity","pos":"noun","topic":"everyday"},
+{"id":"w006","de":"die Umwelt","ro":"mediu înconjurător","en":"environment","pos":"noun","topic":"society"},
+{"id":"w007","de":"die Gesellschaft","ro":"societate","en":"society","pos":"noun","topic":"society"},
+{"id":"w008","de":"die Entscheidung","ro":"decizie","en":"decision","pos":"noun","topic":"everyday"},
+{"id":"w009","de":"der Vorschlag","ro":"propunere","en":"suggestion","pos":"noun","topic":"everyday"},
+{"id":"w010","de":"die Meinung","ro":"părere","en":"opinion","pos":"noun","topic":"everyday"},
+{"id":"w011","de":"der Unterschied","ro":"diferență","en":"difference","pos":"noun","topic":"everyday"},
+{"id":"w012","de":"die Voraussetzung","ro":"condiție prealabilă","en":"prerequisite","pos":"noun","topic":"work"},
+{"id":"w013","de":"die Verantwortung","ro":"responsabilitate","en":"responsibility","pos":"noun","topic":"work"},
+{"id":"w014","de":"die Ursache","ro":"cauză","en":"cause","pos":"noun","topic":"everyday"},
+{"id":"w015","de":"die Folge","ro":"urmare","en":"consequence","pos":"noun","topic":"everyday"},
+{"id":"w016","de":"der Zusammenhang","ro":"legătură","en":"connection, context","pos":"noun","topic":"everyday"},
+{"id":"w017","de":"die Beziehung","ro":"relație","en":"relationship","pos":"noun","topic":"feelings"},
+{"id":"w018","de":"das Gehalt","ro":"salariu","en":"salary","pos":"noun","topic":"work"},
+{"id":"w019","de":"die Miete","ro":"chirie","en":"rent","pos":"noun","topic":"home"},
+{"id":"w020","de":"der Vermieter","ro":"proprietar (care închiriază)","en":"landlord","pos":"noun","topic":"home"},
+{"id":"w021","de":"die Kündigung","ro":"reziliere, concediere","en":"notice of termination","pos":"noun","topic":"work"},
+{"id":"w022","de":"die Versicherung","ro":"asigurare","en":"insurance","pos":"noun","topic":"law"},
+{"id":"w023","de":"die Rechnung","ro":"factură","en":"bill, invoice","pos":"noun","topic":"shopping"},
+{"id":"w024","de":"die Quittung","ro":"chitanță","en":"receipt","pos":"noun","topic":"shopping"},
+{"id":"w025","de":"der Termin","ro":"programare","en":"appointment","pos":"noun","topic":"everyday"},
+{"id":"w026","de":"die Verspätung","ro":"întârziere","en":"delay","pos":"noun","topic":"travel"},
+{"id":"w027","de":"die Abfahrt","ro":"plecare","en":"departure","pos":"noun","topic":"travel"},
+{"id":"w028","de":"die Ankunft","ro":"sosire","en":"arrival","pos":"noun","topic":"travel"},
+{"id":"w029","de":"das Gepäck","ro":"bagaj","en":"luggage","pos":"noun","topic":"travel"},
+{"id":"w030","de":"die Unterkunft","ro":"cazare","en":"accommodation","pos":"noun","topic":"travel"},
+{"id":"w031","de":"die Sehenswürdigkeit","ro":"obiectiv turistic","en":"sight, attraction","pos":"noun","topic":"travel"},
+{"id":"w032","de":"die Gesundheit","ro":"sănătate","en":"health","pos":"noun","topic":"health"},
+{"id":"w033","de":"die Krankheit","ro":"boală","en":"illness","pos":"noun","topic":"health"},
+{"id":"w034","de":"das Rezept","ro":"rețetă","en":"prescription, recipe","pos":"noun","topic":"health"},
+{"id":"w035","de":"die Erkältung","ro":"răceală","en":"cold (illness)","pos":"noun","topic":"health"},
+{"id":"w036","de":"die Verletzung","ro":"rănire","en":"injury","pos":"noun","topic":"health"},
+{"id":"w037","de":"der Schmerz","ro":"durere","en":"pain","pos":"noun","topic":"health"},
+{"id":"w038","de":"die Zukunft","ro":"viitor","en":"future","pos":"noun","topic":"everyday"},
+{"id":"w039","de":"die Vergangenheit","ro":"trecut","en":"past","pos":"noun","topic":"everyday"},
+{"id":"w040","de":"das Ereignis","ro":"întâmplare","en":"occurrence, event","pos":"noun","topic":"media"},
+{"id":"w041","de":"die Veranstaltung","ro":"eveniment organizat","en":"organised event","pos":"noun","topic":"society"},
+{"id":"w042","de":"der Verein","ro":"asociație, club","en":"club, association","pos":"noun","topic":"society"},
+{"id":"w043","de":"das Ehrenamt","ro":"voluntariat","en":"volunteer work","pos":"noun","topic":"society"},
+{"id":"w044","de":"die Nachricht","ro":"știre, mesaj","en":"news, message","pos":"noun","topic":"media"},
+{"id":"w045","de":"die Zeitschrift","ro":"revistă","en":"magazine","pos":"noun","topic":"media"},
+{"id":"w046","de":"die Werbung","ro":"reclamă","en":"advertising","pos":"noun","topic":"media"},
+{"id":"w047","de":"die Ware","ro":"marfă","en":"goods","pos":"noun","topic":"shopping"},
+{"id":"w048","de":"das Angebot","ro":"ofertă","en":"offer","pos":"noun","topic":"shopping"},
+{"id":"w049","de":"die Nachfrage","ro":"cerere (pe piață)","en":"demand","pos":"noun","topic":"shopping"},
+{"id":"w050","de":"der Kunde","ro":"client","en":"customer","pos":"noun","topic":"shopping"},
+{"id":"w051","de":"die Reklamation","ro":"reclamație","en":"complaint (about a product)","pos":"noun","topic":"shopping"},
+{"id":"w052","de":"der Umzug","ro":"mutare (cu locuința)","en":"move (house)","pos":"noun","topic":"home"},
+{"id":"w053","de":"der Haushalt","ro":"gospodărie","en":"household","pos":"noun","topic":"home"},
+{"id":"w054","de":"die Pflicht","ro":"obligație","en":"duty","pos":"noun","topic":"law"},
+{"id":"w055","de":"das Recht","ro":"drept","en":"right, law","pos":"noun","topic":"law"},
+{"id":"w056","de":"das Gesetz","ro":"lege","en":"law (statute)","pos":"noun","topic":"law"},
+{"id":"w057","de":"die Behörde","ro":"autoritate publică","en":"public authority","pos":"noun","topic":"law"},
+{"id":"w058","de":"der Antrag","ro":"cerere oficială","en":"application form","pos":"noun","topic":"law"},
+{"id":"w059","de":"die Genehmigung","ro":"autorizație","en":"permit","pos":"noun","topic":"law"},
+{"id":"w060","de":"das Ziel","ro":"obiectiv, țintă","en":"goal","pos":"noun","topic":"everyday"},
+{"id":"w061","de":"der Erfolg","ro":"succes","en":"success","pos":"noun","topic":"work"},
+{"id":"w062","de":"die Mühe","ro":"efort, osteneală","en":"effort","pos":"noun","topic":"everyday"},
+{"id":"w063","de":"die Geduld","ro":"răbdare","en":"patience","pos":"noun","topic":"feelings"},
+{"id":"w064","de":"das Vertrauen","ro":"încredere","en":"trust","pos":"noun","topic":"feelings"},
+{"id":"w065","de":"der Streit","ro":"ceartă","en":"argument, quarrel","pos":"noun","topic":"feelings"},
+{"id":"w066","de":"die Lösung","ro":"soluție","en":"solution","pos":"noun","topic":"everyday"},
+{"id":"w067","de":"die Ahnung","ro":"habar, bănuială","en":"idea, clue","pos":"noun","topic":"everyday"},
+{"id":"w068","de":"die Ausnahme","ro":"excepție","en":"exception","pos":"noun","topic":"everyday"},
+{"id":"w069","de":"der Zweck","ro":"scop","en":"purpose","pos":"noun","topic":"everyday"},
+{"id":"w070","de":"das Verhalten","ro":"comportament","en":"behaviour","pos":"noun","topic":"feelings"},
+{"id":"w071","de":"sich bewerben","ro":"a candida","en":"to apply (for a job)","pos":"verb","topic":"work"},
+{"id":"w072","de":"vergleichen","ro":"a compara","en":"to compare","pos":"verb","topic":"everyday"},
+{"id":"w073","de":"sich beschweren","ro":"a se plânge","en":"to complain","pos":"verb","topic":"shopping"},
+{"id":"w074","de":"erledigen","ro":"a rezolva (o sarcină)","en":"to get done","pos":"verb","topic":"everyday"},
+{"id":"w075","de":"verschieben","ro":"a amâna","en":"to postpone","pos":"verb","topic":"everyday"},
+{"id":"w076","de":"vermeiden","ro":"a evita","en":"to avoid","pos":"verb","topic":"everyday"},
+{"id":"w077","de":"sich erinnern","ro":"a-și aminti","en":"to remember","pos":"verb","topic":"everyday"},
+{"id":"w078","de":"überzeugen","ro":"a convinge","en":"to convince","pos":"verb","topic":"everyday"},
+{"id":"w079","de":"sich gewöhnen an","ro":"a se obișnui cu","en":"to get used to","pos":"verb","topic":"everyday"},
+{"id":"w080","de":"empfehlen","ro":"a recomanda","en":"to recommend","pos":"verb","topic":"everyday"},
+{"id":"w081","de":"beantragen","ro":"a solicita oficial","en":"to apply for (officially)","pos":"verb","topic":"law"},
+{"id":"w082","de":"zunehmen","ro":"a crește; a se îngrășa","en":"to increase; to gain weight","pos":"verb","topic":"health"},
+{"id":"w083","de":"sich verlassen auf","ro":"a se baza pe","en":"to rely on","pos":"verb","topic":"feelings"},
+{"id":"w084","de":"verdienen","ro":"a câștiga (bani)","en":"to earn","pos":"verb","topic":"work"},
+{"id":"w085","de":"sparen","ro":"a economisi","en":"to save (money)","pos":"verb","topic":"shopping"},
+{"id":"w086","de":"teilnehmen","ro":"a participa","en":"to take part","pos":"verb","topic":"society"},
+{"id":"w087","de":"zuverlässig","ro":"de nădejde","en":"reliable","pos":"adj","topic":"work"},
+{"id":"w088","de":"pünktlich","ro":"punctual","en":"on time","pos":"adj","topic":"work"},
+{"id":"w089","de":"ehrlich","ro":"sincer, cinstit","en":"honest","pos":"adj","topic":"feelings"},
+{"id":"w090","de":"neugierig","ro":"curios","en":"curious","pos":"adj","topic":"feelings"},
+{"id":"w091","de":"vorsichtig","ro":"prudent","en":"careful","pos":"adj","topic":"everyday"},
+{"id":"w092","de":"selbstständig","ro":"independent","en":"independent, self-employed","pos":"adj","topic":"work"},
+{"id":"w093","de":"gleichzeitig","ro":"simultan","en":"at the same time","pos":"adv","topic":"everyday"},
+{"id":"w094","de":"ehemalig","ro":"fost (de odinioară)","en":"former","pos":"adj","topic":"everyday"},
+{"id":"w095","de":"wahrscheinlich","ro":"probabil","en":"probably","pos":"adv","topic":"everyday"},
+{"id":"w096","de":"ausreichend","ro":"suficient","en":"sufficient","pos":"adj","topic":"everyday"},
+{"id":"w097","de":"anstrengend","ro":"obositor","en":"exhausting","pos":"adj","topic":"everyday"},
+{"id":"w098","de":"umständlich","ro":"complicat, greoi","en":"cumbersome","pos":"adj","topic":"everyday"},
+{"id":"w099","de":"enttäuscht","ro":"dezamăgit","en":"disappointed","pos":"adj","topic":"feelings"},
+{"id":"w100","de":"erfolgreich","ro":"de succes","en":"successful","pos":"adj","topic":"work"}
+]
+</script>
+<script type="application/json" id="seed-phrases">
+[
+{"id":"p001","de":"eine Entscheidung treffen","ro":"a lua o decizie","en":"to make a decision","topic":"everyday"},
+{"id":"p002","de":"Erfahrung sammeln","ro":"a acumula experiență","en":"to gain experience","topic":"work"},
+{"id":"p003","de":"einen Termin vereinbaren","ro":"a stabili o programare","en":"to make an appointment","topic":"everyday"},
+{"id":"p004","de":"einen Antrag stellen","ro":"a depune o cerere","en":"to submit an application","topic":"law"},
+{"id":"p005","de":"einen Vertrag unterschreiben","ro":"a semna un contract","en":"to sign a contract","topic":"work"},
+{"id":"p006","de":"die Miete zahlen","ro":"a plăti chiria","en":"to pay the rent","topic":"home"},
+{"id":"p007","de":"Verantwortung übernehmen","ro":"a-și asuma responsabilitatea","en":"to take responsibility","topic":"work"},
+{"id":"p008","de":"einen Vorschlag machen","ro":"a face o propunere","en":"to make a suggestion","topic":"everyday"},
+{"id":"p009","de":"eine Lösung finden","ro":"a găsi o soluție","en":"to find a solution","topic":"everyday"},
+{"id":"p010","de":"Geduld haben","ro":"a avea răbdare","en":"to be patient","topic":"feelings"},
+{"id":"p011","de":"keine Ahnung haben","ro":"a nu avea habar","en":"to have no idea","topic":"everyday"},
+{"id":"p012","de":"eine Ausnahme machen","ro":"a face o excepție","en":"to make an exception","topic":"everyday"},
+{"id":"p013","de":"die Rechnung bezahlen","ro":"a plăti factura","en":"to pay the bill","topic":"shopping"},
+{"id":"p014","de":"eine Versicherung abschließen","ro":"a încheia o asigurare","en":"to take out insurance","topic":"law"},
+{"id":"p015","de":"eine Genehmigung bekommen","ro":"a obține o autorizație","en":"to get a permit","topic":"law"},
+{"id":"p016","de":"ein Ziel erreichen","ro":"a atinge un obiectiv","en":"to reach a goal","topic":"work"},
+{"id":"p017","de":"großen Erfolg haben","ro":"a avea mare succes","en":"to be very successful","topic":"work"},
+{"id":"p018","de":"die Umwelt schützen","ro":"a proteja mediul","en":"to protect the environment","topic":"society"},
+{"id":"p019","de":"einen Streit vermeiden","ro":"a evita o ceartă","en":"to avoid an argument","topic":"feelings"},
+{"id":"p020","de":"den Termin verschieben","ro":"a amâna programarea","en":"to postpone the appointment","topic":"everyday"},
+{"id":"p021","de":"eine günstige Unterkunft","ro":"o cazare ieftină","en":"cheap accommodation","topic":"travel"},
+{"id":"p022","de":"ein gutes Angebot","ro":"o ofertă bună","en":"a good offer","topic":"shopping"},
+{"id":"p023","de":"eine wichtige Nachricht","ro":"un mesaj important","en":"an important message","topic":"media"},
+{"id":"p024","de":"ein zuverlässiger Kollege","ro":"un coleg de nădejde","en":"a reliable colleague","topic":"work"},
+{"id":"p025","de":"das Gepäck abholen","ro":"a ridica bagajul","en":"to collect the luggage","topic":"travel"},
+{"id":"p026","de":"Geld sparen","ro":"a economisi bani","en":"to save money","topic":"shopping"},
+{"id":"p027","de":"gut verdienen","ro":"a câștiga bine","en":"to earn well","topic":"work"},
+{"id":"p028","de":"eine Erkältung haben","ro":"a fi răcit","en":"to have a cold","topic":"health"},
+{"id":"p029","de":"sehr enttäuscht sein","ro":"a fi foarte dezamăgit","en":"to be very disappointed","topic":"feelings"},
+{"id":"p030","de":"einen Unterschied machen","ro":"a face diferența","en":"to make a difference","topic":"everyday"}
+]
+</script>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const FONT = '"Chakra Petch", "Segoe UI", system-ui, sans-serif';
+const COL = { bg: "#0b0e1a", panel: "#141a2e", panel2: "#1b2340", line: "#2a3456", fg: "#e9ecf5", muted: "#8a93b3",
+  gold: "#ffc94a", ok: "#5be0a0", bad: "#ff5d73", der: "#6aa8ff", die: "#ff7a9a", das: "#5be0a0", shield: "#8fdcff", rock: "#9a8470" };
+const ARTS = ["der", "die", "das"];
+
+/* ---------- Storage (browser localStorage) ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+};
+const SEED = JSON.parse(document.getElementById("seed").textContent);
+const SEED_P = JSON.parse(document.getElementById("seed-phrases").textContent);
+let words = store.get("wj_words", null);
+if (!Array.isArray(words)) { words = SEED.map(w => ({ ...w, active: true })); saveWords(); }
+let phrases = store.get("wj_phrases", null);
+if (!Array.isArray(phrases)) { phrases = SEED_P.map(p => ({ ...p, active: true })); savePhrases(); }
+let progress = store.get("wj_progress", {});
+let settings = Object.assign({ lang: "ro", newPer: 5, voice: true }, store.get("wj_settings", {}));
+
+function saveWords() { if (!store.set("wj_words", words)) toast("Could not save: browser storage is blocked or full."); }
+function savePhrases() { if (!store.set("wj_phrases", phrases)) toast("Could not save: browser storage is blocked or full."); }
+function saveProgress() { store.set("wj_progress", progress); }
+function saveSettings() { store.set("wj_settings", settings); }
+
+/* ---------- Spaced repetition (Leitner boxes with day intervals) ---------- */
+const IV = [0, 1, 3, 7, 16, 35, 80]; // box -> days until next review
+const MAX_REVIEWS = 20, PHRASE_UNLOCK = 8, NEW_PHRASES = 2, MAX_PHRASE_REVIEWS = 6;
+function today() { const d = new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000); }
+function prog(id) { return progress[id] || (progress[id] = { b: 0, due: today(), seen: 0, ok: 0, bad: 0 }); }
+function setBox(id, b) { const p = prog(id); p.b = Math.max(0, Math.min(6, b)); p.due = today() + IV[p.b]; }
+function status(w) {
+  if (w.active === false) return "off";
+  const p = progress[w.id];
+  if (!p) return "new";
+  if (p.b === 0) return "learning";
+  if (p.due <= today()) return "due";
+  return p.b >= 4 ? "mastered" : "known";
+}
+function knownCount() { return words.filter(w => progress[w.id] && progress[w.id].b >= 1).length; }
+
+/* ---------- Word helpers ---------- */
+function gender(de) { const m = /^(der|die|das)\s/i.exec(de || ""); return m ? m[1].toLowerCase() : null; }
+function stem(de) { return (de || "").replace(/^(der|die|das|sich)\s+/i, "").toLowerCase(); }
+function tokens(s) { return (s || "").toLowerCase().split(/[^a-zà-ÿăâîșțşţ]+/).filter(x => x.length > 3); }
+function promptOf(w) { const L = settings.lang, O = L === "ro" ? "en" : "ro"; return w[L] || w[O] || ""; }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function deHTML(de) {
+  const g = gender(de);
+  return g ? `<span class="art-${g}">${esc(de.slice(0, 3))}</span>${esc(de.slice(3))}` : esc(de);
+}
+
+// Pick look-alike wrong answers: same word type, same gender, shared start, similar length.
+// Words whose meaning overlaps the target (same translation tokens) are never used.
+function distractors(w, k) {
+  const tt = new Set(tokens(promptOf(w)));
+  const ws = stem(w.de), g = gender(w.de);
+  return words
+    .filter(c => c.id !== w.id && c.de && c.active !== false && c.de.toLowerCase() !== w.de.toLowerCase() && !tokens(promptOf(c)).some(t => tt.has(t)))
+    .map(c => {
+      const cs = stem(c.de); let s = Math.random() * 3, p = 0;
+      if (c.pos === w.pos) s += 3;
+      if (g && gender(c.de) === g) s += 2;
+      while (p < cs.length && p < ws.length && cs[p] === ws[p]) p++;
+      s += Math.min(p, 4) * 1.2;
+      if (Math.abs(cs.length - ws.length) <= 3) s += 1;
+      return { c, s };
+    })
+    .sort((a, b) => b.s - a.s).slice(0, k).map(x => x.c);
+}
+
+// Phrase traps: other forms of the same article or adjective ending, then pieces of other phrases.
+const ART_FAMILIES = [["der", "die", "das", "den", "dem", "des"], ["ein", "eine", "einen", "einem", "einer", "eines"], ["kein", "keine", "keinen", "keinem", "keiner"]];
+function variants(toks, i) {
+  const t = toks[i], l = t.toLowerCase();
+  for (const fam of ART_FAMILIES) if (fam.includes(l)) return fam.filter(x => x !== l);
+  const nextIsNoun = toks[i + 1] && /^[A-ZÄÖÜ]/.test(toks[i + 1]);
+  if (nextIsNoun && /^[a-zäöüß]/.test(t) && /(e|en|er|es|em)$/.test(t)) {
+    const base = t.replace(/(en|er|es|em|e)$/, "");
+    return ["e", "en", "er", "es", "em"].map(s => base + s).filter(x => x !== t);
+  }
+  return [];
+}
+function phraseDistractors(ph, k) {
+  const toks = ph.de.split(/\s+/), have = new Set(toks);
+  const forms = shuffle(toks.flatMap((_, i) => variants(toks, i)));
+  const others = shuffle(phrases.filter(p => p.id !== ph.id).flatMap(p => p.de.split(/\s+/)).filter(t => t.length > 2));
+  const out = [];
+  for (const c of [...forms.slice(0, 1), ...others.slice(0, 1), ...forms, ...others]) {
+    if (out.length >= k) break;
+    if (!have.has(c) && !out.includes(c)) out.push(c);
+  }
+  return out;
+}
+
+/* ---------- Audio ---------- */
+let deVoice = null, actx = null;
+function pickVoice() { try { deVoice = speechSynthesis.getVoices().find(v => /^de([-_]|$)/i.test(v.lang)) || null; } catch {} }
+if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text) {
+  if (!settings.voice || !("speechSynthesis" in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "de-DE"; if (deVoice) u.voice = deVoice; u.rate = 0.9;
+    speechSynthesis.speak(u);
+  } catch {}
+}
+function beep(freq, dur, type = "square", vol = 0.05, slide = 0) {
+  if (!actx) return;
+  try {
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+  } catch {}
+}
+const sfx = {
+  shot: () => beep(880, 0.06, "square", 0.02, -400),
+  ok: () => { beep(660, 0.1, "triangle", 0.08); setTimeout(() => beep(990, 0.14, "triangle", 0.08), 80); },
+  piece: () => beep(740, 0.08, "triangle", 0.07, 200),
+  crack: () => { beep(300, 0.08, "square", 0.06, 300); setTimeout(() => beep(1200, 0.1, "sine", 0.05), 60); },
+  bad: () => beep(180, 0.3, "sawtooth", 0.07, -100),
+  gold: () => beep(520, 0.25, "sine", 0.08, 400),
+  swap: () => beep(1100, 0.04, "sine", 0.04),
+  rock: () => beep(120, 0.15, "sawtooth", 0.05, -60),
+  level: () => [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.12, "triangle", 0.07), i * 70))
+};
+
+/* ---------- Canvas & game state ---------- */
+const cv = $("#cv"), ctx = cv.getContext("2d");
+let W = 800, H = 560, DPR = 1;
+const BAND = 92;
+const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random() * 0.8 + 0.2 }));
+let ship = { x: 400, y: 500 }, bullets = [], enemies = [], parts = [], floats = [], rocks = [];
+let keys = { l: false, r: false, fire: false }, pointerX = null, pointerDown = false, lastShot = 0, weapon = 0;
+let run = null, paused = false, shake = 0, last = performance.now(), clock = 0;
+
+function resize() {
+  const wrap = $("#stage");
+  W = wrap.clientWidth;
+  H = Math.max(460, Math.min(740, window.innerHeight - 130));
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * DPR; cv.height = H * DPR; cv.style.height = H + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ship.y = H - 66; // leaves room for the article buttons ship.x = Math.min(Math.max(ship.x, 20), W - 20);
+}
+window.addEventListener("resize", resize);
+
+function setWeapon(i) {
+  weapon = (i + 3) % 3;
+  document.querySelectorAll(".wpn").forEach(b => b.classList.toggle("on", +b.dataset.w === weapon));
+  sfx.swap();
+}
+
+function buildRun() {
+  const t = today();
+  const usable = w => w.active !== false && w.de && (w.ro || w.en);
+  const isDue = w => progress[w.id] && progress[w.id].b > 0 && progress[w.id].due <= t;
+  const byDue = (a, b) => progress[a.id].due - progress[b.id].due;
+  const act = words.filter(usable);
+  const learning = act.filter(w => progress[w.id] && progress[w.id].b === 0);
+  const fresh = act.filter(w => !progress[w.id]);
+  const news = [...learning, ...fresh].slice(0, settings.newPer);
+  const rev = shuffle(act.filter(isDue).sort(byDue).slice(0, MAX_REVIEWS));
+  const units = []; // an intro stays next to its first test
+  news.forEach(w => {
+    units.push([{ k: "intro", w }, { k: "test", w, m: "learn1" }]);
+    for (let i = 0; i < 2 && rev.length; i++) units.push([{ k: "test", w: rev.shift(), m: "review" }]);
+  });
+  rev.forEach(w => units.push([{ k: "test", w, m: "review" }]));
+
+  // Phrases: unlocked by known words, placed in the second half of the run.
+  const groups = [];
+  if (knownCount() >= PHRASE_UNLOCK) {
+    const pact = phrases.filter(usable);
+    const stems = words.filter(w => progress[w.id] && progress[w.id].b >= 1).map(w => stem(w.de).slice(0, 5));
+    const familiar = p => stems.some(s => s && p.de.toLowerCase().includes(s)) ? 1 : 0;
+    const pl = pact.filter(p => progress[p.id] && progress[p.id].b === 0);
+    const pf = pact.filter(p => !progress[p.id]).sort((a, b) => familiar(b) - familiar(a));
+    [...pl, ...pf].slice(0, NEW_PHRASES).forEach(p => groups.push([{ k: "intro", w: p }, { k: "phrase", w: p, m: "learn1" }]));
+    shuffle(pact.filter(isDue).sort(byDue).slice(0, MAX_PHRASE_REVIEWS)).forEach(p => groups.push([{ k: "phrase", w: p, m: "review" }]));
+  }
+  // Nothing new and nothing due: free practice on known words (does not change the schedule).
+  if (!units.length && !groups.length) {
+    return shuffle(act.filter(w => progress[w.id] && progress[w.id].b > 0)).slice(0, 12)
+      .map(w => ({ k: "test", w, m: "retry" }));
+  }
+  const out = units.splice(0, Math.ceil(units.length / 2)).flat();
+  while (units.length || groups.length) {
+    out.push(...units.splice(0, 2).flat());
+    if (groups.length) out.push(...groups.shift());
+  }
+  return out;
+}
+
+function startRun() {
+  if (words.filter(w => w.active !== false).length < 4) { toast("Switch on at least 4 words in the register to play."); return; }
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch {} }
+  const steps = buildRun();
+  if (!steps.length) { toast("No words available. Add some in the register."); return; }
+  clock = performance.now();
+  run = { steps, i: 0, lives: 5, score: 0, combo: 0, maxCombo: 0, ok: 0, bad: 0, artBad: 0, level: 1, learned: [], weak: new Set(),
+    practice: steps.every(s => s.m === "retry"), nextAt: 0, t0: 0, phase: "wait", built: [], toks: [], nextRock: clock + 4000, banner: null };
+  bullets = []; enemies = []; parts = []; floats = []; rocks = [];
+  $("#menu").hidden = true; $("#over").hidden = true; $("#weapons").hidden = false; paused = false;
+  setWeapon(0);
+  startStep();
+}
+
+function startStep() {
+  const s = run.steps[run.i];
+  enemies = []; bullets = []; run.built = [];
+  if (!s) return finish(true);
+  if (s.k === "intro" || s.k === "reveal") {
+    if (s.k === "intro") { const p = prog(s.w.id); p.seen++; saveProgress(); }
+    spawnGold(s);
+    say(s.w.de); sfx.gold();
+  } else if (s.k === "phrase") {
+    spawnPhrase(s);
+  } else {
+    if (s.armor === undefined) s.armor = wantArmor(s);
+    spawnOptions(s);
+  }
+  run.phase = "live"; run.t0 = clock;
+}
+
+function wantArmor(s) {
+  if (!gender(s.w.de)) return false;
+  if (s.m === "review") return Math.random() < 0.6;
+  if (s.m === "learn2") return Math.random() < 0.5;
+  return false;
+}
+
+function optionCount(s) {
+  if (s.m === "learn1") return 2;
+  if (s.m === "learn2" || s.m === "retry") return 3;
+  return (progress[s.w.id]?.b ?? 0) <= 2 ? 3 : 4;
+}
+
+function speed() { return Math.min(72, 24 + (run.level - 1) * 5) * (H / 600); }
+
+// Lay out labelled enemies in one or more rows above the screen; later rows trail behind.
+function spawnLabels(items) {
+  const n = items.length, pad = 14, gap = 12;
+  let L = null;
+  for (const rows of [1, 2, 3, n]) {
+    if (rows > n) continue;
+    const per = Math.ceil(n / rows);
+    for (let fs = Math.round(Math.min(22, Math.max(16, W / 30))); fs >= 12 && !L; fs--) {
+      ctx.font = `700 ${fs}px ${FONT}`;
+      const ws = items.map(o => ctx.measureText(o.text).width + pad * 2);
+      let fits = true;
+      for (let r = 0; r < rows; r++) {
+        const row = ws.slice(r * per, r * per + per);
+        if (row.reduce((a, b) => a + b, 0) + gap * (row.length + 1) > W) fits = false;
+      }
+      if (fits) L = { per, fs, ws };
+    }
+    if (L) break;
+  }
+  if (!L) L = { per: 1, fs: 12, ws: items.map(() => W - 32) };
+  const bh = L.fs + 22, wobK = 1 + (run.level - 1) * 0.4;
+  items.forEach((o, idx) => {
+    const r = Math.floor(idx / L.per), c = idx % L.per;
+    const inRow = Math.min(L.per, n - r * L.per);
+    const slot = W / inRow, bw = Math.min(L.ws[idx], W - 16);
+    const room = Math.max(0, slot - bw - gap) / 2;
+    enemies.push(Object.assign({
+      x: slot * c + slot / 2 + (Math.random() * 2 - 1) * room * 0.6, y: BAND - bh - 8 - r * (bh + 46),
+      bw, bh, fs: L.fs, ph: Math.random() * 6.28, wob: Math.min(room, 10 * wobK)
+    }, o));
+  });
+}
+
+function spawnOptions(s) {
+  const opts = shuffle([s.w, ...distractors(s.w, optionCount(s) - 1)]);
+  spawnLabels(opts.map(o => ({
+    w: o, target: o.id === s.w.id, armor: s.armor,
+    text: s.armor && gender(o.de) ? o.de.slice(4) : o.de
+  })));
+}
+
+function spawnPhrase(s) {
+  run.toks = s.w.de.split(/\s+/);
+  const extra = phraseDistractors(s.w, s.m === "learn1" ? 1 : 2);
+  spawnLabels(shuffle([...run.toks.map(t => ({ text: t, part: true })), ...extra.map(t => ({ text: t, part: false }))]));
+}
+
+function spawnGold(s) {
+  const bw = Math.min(W - 32, 400), bh = 118;
+  enemies.push({ gold: true, mode: s.k, why: s.why, phrase: phrases.includes(s.w), w: s.w, x: W / 2, y: BAND + 6, bw, bh, ph: 0, wob: 0 });
+}
+
+function insertStep(offset, step) { run.steps.splice(Math.min(run.steps.length, run.i + offset), 0, step); }
+function next(delay) { run.phase = "wait"; run.nextAt = clock + delay; }
+
+function burst(x, y, color, n = 18, spd = 220) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.283, v = spd * (0.3 + Math.random());
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.5 + Math.random() * 0.4, t: 0, c: color });
+  }
+}
+function floatText(x, y, text, c, size = 18) { floats.push({ x, y, text, c, t: 0, size }); }
+
+function onHit(e, bw) {
+  const s = run.steps[run.i];
+  if (e.gold) {
+    burst(e.x, e.y + e.bh / 2, COL.gold, 30, 260); sfx.ok();
+    enemies = []; next(250); return;
+  }
+  if (s.k === "phrase") return phraseHit(s, e);
+  if (!e.target) return wrong(s, e, "word");
+  if (e.armor && !e.cracked) {
+    e.cracked = true;
+    e.text = "___ " + e.text;
+    ctx.font = `700 ${e.fs}px ${FONT}`;
+    e.bw = Math.min(W - 16, ctx.measureText(e.text).width + 28);
+    e.y = Math.max(BAND + 4, e.y - 50);
+    e.safeUntil = clock + 450; bullets = []; lastShot = clock + 200; // time to pick the article gun
+    enemies.filter(o => o !== e).forEach(o => burst(o.dx ?? o.x, o.y + o.bh / 2, COL.muted, 8));
+    enemies = [e];
+    burst(e.x, e.y + e.bh / 2, COL.shield, 18);
+    floatText(e.x, e.y - 8, "der · die · das?", COL.gold, 16);
+    run.score += 30; sfx.crack();
+    return;
+  }
+  if (e.armor && ARTS[bw] !== gender(s.w.de)) return wrong(s, e, "article");
+  correct(s, e);
+}
+
+function phraseHit(s, e) {
+  if (e.text !== run.toks[run.built.length]) return wrong(s, e, "order");
+  run.built.push(e.text);
+  burst(e.dx ?? e.x, e.y + e.bh / 2, COL.ok, 14);
+  enemies = enemies.filter(o => o !== e);
+  if (run.built.length === run.toks.length) {
+    enemies.forEach(o => burst(o.dx ?? o.x, o.y + o.bh / 2, COL.muted, 8));
+    correct(s, e);
+  } else { sfx.piece(); say(e.text); }
+}
+
+function correct(s, e) {
+  const rt = clock - run.t0, n = s.k === "phrase" ? run.toks.length : 1;
+  run.ok++; run.combo++; run.maxCombo = Math.max(run.maxCombo, run.combo);
+  const base = s.k === "phrase" ? 80 * n : e.armor ? 160 : 100;
+  const pts = base + run.combo * 20 + Math.max(0, Math.round((4000 * n - rt) / 40));
+  run.score += pts;
+  floatText(e.dx ?? e.x, e.y, "+" + pts, COL.ok);
+  enemies.forEach(o => burst(o.dx ?? o.x, o.y + o.bh / 2, o === e ? COL.ok : COL.muted, o === e ? 26 : 8));
+  burst(e.dx ?? e.x, e.y + e.bh / 2, e.armor ? COL[gender(s.w.de)] : COL.ok, 26);
+  say(s.w.de); sfx.ok();
+  if (!run.practice) {
+    const p = prog(s.w.id); p.ok++;
+    if (s.m === "learn1") insertStep(4, { k: s.k, w: s.w, m: "learn2" });
+    else if (s.m === "learn2") { setBox(s.w.id, 1); run.learned.push(s.w); }
+    else if (s.m === "review") {
+      if (rt < 2500 * n && p.b >= 2) setBox(s.w.id, p.b + 2);
+      else if (rt > 7000 * n) setBox(s.w.id, Math.max(1, p.b));
+      else setBox(s.w.id, p.b + 1);
+    }
+    saveProgress();
+  }
+  enemies = []; next(550);
+  const lvl = 1 + Math.floor(run.ok / 6);
+  if (lvl > run.level) { run.level = lvl; run.banner = { text: `LEVEL ${lvl}`, t: 0 }; setTimeout(sfx.level, 250); }
+}
+
+function wrong(s, e, why) {
+  run.bad++; run.combo = 0; run.lives--; shake = 0.35;
+  if (why === "article") run.artBad++;
+  run.weak.add(s.w);
+  const label = { article: "Wrong article", order: "Wrong order", slow: "Too slow" }[why] || "✗";
+  if (e) burst(e.dx ?? e.x, e.y + e.bh / 2, COL.bad, 26);
+  floatText(e ? (e.dx ?? e.x) : W / 2, e ? e.y : ship.y - 60, label, COL.bad);
+  sfx.bad();
+  if (!run.practice) {
+    const p = prog(s.w.id); p.bad++;
+    if (why === "article") p.art = (p.art || 0) + 1;
+    if (s.m === "review") setBox(s.w.id, why === "article" ? Math.max(1, p.b - 1) : 1);
+    saveProgress();
+  }
+  enemies = [];
+  if (run.lives <= 0) { run.phase = "over"; run.endAt = clock + 900; return; }
+  const m = s.m === "learn1" || s.m === "learn2" ? "learn1" : "retry";
+  insertStep(4, { k: s.k, w: s.w, m, armor: why === "article" ? true : undefined });
+  insertStep(1, { k: "reveal", w: s.w, why });
+  next(500);
+}
+
+function finish(complete) {
+  if (!run) return;
+  saveProgress();
+  const r = run; run = null; enemies = []; bullets = []; rocks = [];
+  $("#weapons").hidden = true;
+  $("#over-title").textContent = complete ? (r.practice ? "Practice complete" : "Run complete") : "Out of lives";
+  $("#over-stats").innerHTML = [
+    ["Score", r.score], ["Level", r.level], ["Correct", r.ok], ["Mistakes", r.bad], ["Article errors", r.artBad], ["Best combo", r.maxCombo], ["Learned", r.learned.length]
+  ].map(([k, v]) => `<div><strong>${v}</strong><span>${k}</span></div>`).join("");
+  const chips = list => `<div class="wordlist">${list.map(w => `<span>${deHTML(w.de)} · ${esc(promptOf(w))}</span>`).join("")}</div>`;
+  $("#over-learned").innerHTML = r.learned.length ? `<p class="lede">Learned today, back for review tomorrow:</p>${chips(r.learned)}` : "";
+  const weak = [...r.weak];
+  $("#over-weak").innerHTML = weak.length ? `<p class="lede">Needs more work:</p>${chips(weak)}` : "";
+  $("#over").hidden = false;
+  renderToday(); renderReg();
+}
+
+/* ---------- Update ---------- */
+function update(dt, now) {
+  clock = now;
+  // ship
+  if (keys.l || keys.r) { ship.x += ((keys.r ? 1 : 0) - (keys.l ? 1 : 0)) * 520 * dt; pointerX = null; }
+  else if (pointerX != null) { const d = pointerX - ship.x; ship.x += Math.sign(d) * Math.min(Math.abs(d), 900 * dt); }
+  ship.x = Math.max(18, Math.min(W - 18, ship.x));
+  if ((keys.fire || pointerDown) && now - lastShot > 170 && run.phase !== "over") {
+    bullets.push({ x: ship.x, y: ship.y - 18, w: weapon }); lastShot = now; sfx.shot();
+  }
+  bullets.forEach(b => b.y -= 720 * dt);
+  bullets = bullets.filter(b => b.y > BAND - 10);
+
+  const v = speed(), s = run.steps[run.i];
+  for (const e of enemies) {
+    const k = e.gold ? 0.7 : e.cracked ? 0.45 : s && s.k === "phrase" ? Math.min(0.75, 3 / run.toks.length) : 1;
+    e.y += v * k * dt;
+    e.ph += dt * (1.2 + run.level * 0.15);
+    e.dx = Math.max(e.bw / 2 + 4, Math.min(W - e.bw / 2 - 4, e.x + Math.sin(e.ph) * e.wob));
+  }
+
+  // meteors from level 3: shoot them or dodge them, a hit costs the combo
+  if (run.level >= 3 && now >= run.nextRock && run.phase !== "over") {
+    rocks.push({ x: 20 + Math.random() * (W - 40), y: BAND, vy: (110 + Math.random() * 90 + run.level * 8) * (H / 600),
+      vx: (Math.random() - .5) * 40, r: 10 + Math.random() * 8, a: 0, va: (Math.random() - .5) * 4 });
+    run.nextRock = now + Math.max(1400, 6500 - run.level * 600) * (0.6 + Math.random() * 0.8);
+  }
+  for (const m of rocks) {
+    m.y += m.vy * dt; m.x += m.vx * dt; m.a += m.va * dt;
+    for (const b of bullets) if (Math.hypot(b.x - m.x, b.y - m.y) < m.r + 4) {
+      b.y = -999; m.dead = true; run.score += 25; burst(m.x, m.y, COL.rock, 12); sfx.rock(); break;
+    }
+    if (!m.dead && Math.hypot(ship.x - m.x, ship.y - m.y) < m.r + 12) {
+      m.dead = true; shake = 0.3; burst(m.x, m.y, COL.bad, 16); sfx.bad();
+      if (run.combo > 1) floatText(ship.x, ship.y - 40, "Combo lost", COL.bad);
+      run.combo = 0;
+    }
+  }
+  rocks = rocks.filter(m => !m.dead && m.y < H + 30);
+
+  if (run.phase === "live") {
+    outer: for (const b of bullets) {
+      for (const e of enemies) {
+        if (e.y < BAND || (e.safeUntil && clock < e.safeUntil)) continue; // hidden under the band, or just cracked
+        if (b.x > e.dx - e.bw / 2 && b.x < e.dx + e.bw / 2 && b.y > e.y && b.y < e.y + e.bh) {
+          b.y = -999; e.x = e.dx; onHit(e, b.w); break outer;
+        }
+      }
+    }
+  }
+  if (run && run.phase === "live") {
+    const s = run.steps[run.i];
+    for (const e of enemies) {
+      if (e.y + e.bh < ship.y - 22) continue;
+      if (e.gold) { enemies = []; next(150); break; }
+      if (e.target || e.part) { wrong(s, null, "slow"); break; }
+      e.gone = true; burst(e.dx, e.y + e.bh / 2, COL.muted, 8); // a wrong option slipped past: no penalty
+    }
+    if (run.phase === "live") enemies = enemies.filter(e => !e.gone);
+  }
+  if (run.phase === "over" && now >= run.endAt) { finish(false); return; }
+  if (run.phase === "wait" && run.nextAt && now >= run.nextAt) { run.nextAt = 0; run.i++; startStep(); }
+  if (run && run.banner) { run.banner.t += dt; if (run.banner.t > 1.6) run.banner = null; }
+}
+
+function tickEffects(dt) {
+  for (const p of parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96; }
+  parts = parts.filter(p => p.t < p.life);
+  for (const f of floats) { f.t += dt; f.y -= 40 * dt; }
+  floats = floats.filter(f => f.t < 0.9);
+  if (shake > 0) shake -= dt;
+}
+
+/* ---------- Draw ---------- */
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+function fitFont(text, maxW, start, min, weight = 700) {
+  let fs = start;
+  do { ctx.font = `${weight} ${fs}px ${FONT}`; if (ctx.measureText(text).width <= maxW) break; fs--; } while (fs > min);
+  return fs;
+}
+// Draw German text centred, with the article (der/die/das) in its gender colour.
+function drawDe(text, cx, cy, fs, artColor) {
+  ctx.font = `700 ${fs}px ${FONT}`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  const g = gender(text), cracked = text.startsWith("___ ");
+  let x = cx - ctx.measureText(text).width / 2;
+  if (g || cracked) {
+    const art = text.slice(0, 4);
+    ctx.fillStyle = cracked ? artColor : COL[g]; ctx.fillText(art, x, cy); x += ctx.measureText(art).width;
+    ctx.fillStyle = COL.fg; ctx.fillText(text.slice(4), x, cy);
+  } else { ctx.fillStyle = COL.fg; ctx.fillText(text, x, cy); }
+}
+
+function draw(now) {
+  ctx.save();
+  if (shake > 0) ctx.translate((Math.random() - .5) * 10 * shake, (Math.random() - .5) * 10 * shake);
+  ctx.fillStyle = COL.bg; ctx.fillRect(-10, -10, W + 20, H + 20);
+  const drift = run ? 0.02 + run.level * 0.006 : 0.02;
+  for (const s of stars) {
+    const y = (s.y * H + now * drift * s.z) % H;
+    ctx.fillStyle = `rgba(233,236,245,${0.15 + s.z * 0.45})`;
+    ctx.fillRect(s.x * W, y, s.z * 2, s.z * 2);
+  }
+  ctx.strokeStyle = "rgba(255,93,115,.25)"; ctx.setLineDash([6, 8]);
+  ctx.beginPath(); ctx.moveTo(0, ship.y - 22); ctx.lineTo(W, ship.y - 22); ctx.stroke(); ctx.setLineDash([]);
+
+  const wcol = COL[ARTS[weapon]];
+  for (const e of enemies) {
+    const x = (e.dx ?? e.x) - e.bw / 2, y = e.y;
+    if (e.gold) {
+      const grd = ctx.createLinearGradient(x, y, x + e.bw, y + e.bh);
+      grd.addColorStop(0, "#2a2210"); grd.addColorStop(1, "#1a1a2e");
+      rr(x, y, e.bw, e.bh, 14); ctx.fillStyle = grd; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = COL.gold; ctx.shadowColor = COL.gold; ctx.shadowBlur = 18; ctx.stroke(); ctx.shadowBlur = 0;
+      const head = e.mode === "intro" ? (e.phrase ? "NEW PHRASE · SHOOT TO LEARN" : "NEW WORD · SHOOT TO LEARN")
+        : e.why === "article" ? "RIGHT ARTICLE · SHOOT TO CONTINUE"
+        : e.why === "order" ? "RIGHT ORDER · SHOOT TO CONTINUE" : "CORRECT ANSWER · SHOOT TO CONTINUE";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `700 11px ${FONT}`; ctx.fillStyle = COL.gold;
+      ctx.fillText(head, x + e.bw / 2, y + 16);
+      drawDe(e.w.de, x + e.bw / 2, y + 50, fitFont(e.w.de, e.bw - 30, 30, 13));
+      const pr = promptOf(e.w);
+      ctx.textAlign = "center"; ctx.fillStyle = COL.muted;
+      ctx.font = `500 ${fitFont(pr, e.bw - 30, 17, 11, 500)}px ${FONT}`; ctx.fillText(pr, x + e.bw / 2, y + 86);
+      const other = settings.lang === "ro" ? e.w.en : e.w.ro;
+      if (other && other !== pr) { ctx.font = `500 11px ${FONT}`; ctx.fillStyle = "rgba(138,147,179,.7)"; ctx.fillText(other, x + e.bw / 2, y + 104); }
+      continue;
+    }
+    rr(x, y, e.bw, e.bh, 9); ctx.fillStyle = COL.panel2; ctx.fill();
+    if (e.armor && !e.cracked) {
+      ctx.lineWidth = 2; ctx.strokeStyle = COL.shield; ctx.shadowColor = COL.shield; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+      rr(x - 4, y - 4, e.bw + 8, e.bh + 8, 12); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(143,220,255,.45)"; ctx.stroke();
+    } else if (e.cracked) {
+      ctx.lineWidth = 2.5; ctx.strokeStyle = wcol; ctx.shadowColor = wcol; ctx.shadowBlur = 8 + Math.sin(now / 120) * 6; ctx.stroke(); ctx.shadowBlur = 0;
+    } else { ctx.lineWidth = 1.5; ctx.strokeStyle = COL.line; ctx.stroke(); }
+    drawDe(e.text, x + e.bw / 2, y + e.bh / 2 + 1, e.fs, wcol);
+  }
+  for (const m of rocks) {
+    ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(m.a);
+    ctx.beginPath();
+    for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283, rr2 = m.r * (0.75 + ((i * 37) % 5) / 10); ctx.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2); }
+    ctx.closePath(); ctx.fillStyle = "#3a3230"; ctx.fill(); ctx.strokeStyle = COL.rock; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
+  }
+  for (const b of bullets) { ctx.fillStyle = COL[ARTS[b.w]]; ctx.fillRect(b.x - 1.5, b.y - 9, 3, 12); }
+  if (run) {
+    ctx.save(); ctx.translate(ship.x, ship.y);
+    ctx.shadowColor = wcol; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(15, 14); ctx.lineTo(0, 7); ctx.lineTo(-15, 14); ctx.closePath();
+    ctx.fillStyle = COL.fg; ctx.fill(); ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(5, -6); ctx.lineTo(-5, -6); ctx.closePath(); ctx.fillStyle = wcol; ctx.fill();
+    ctx.fillStyle = COL.gold; ctx.fillRect(-3, 9, 6, 6 + Math.random() * 6);
+    ctx.restore();
+  }
+  for (const p of parts) { ctx.globalAlpha = 1 - p.t / p.life; ctx.fillStyle = p.c; ctx.fillRect(p.x - 2, p.y - 2, 4, 4); }
+  ctx.globalAlpha = 1;
+  for (const f of floats) {
+    ctx.globalAlpha = 1 - f.t / 0.9; ctx.fillStyle = f.c; ctx.font = `700 ${f.size}px ${FONT}`; ctx.textAlign = "center";
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  if (run && run.banner) {
+    const t = run.banner.t, a = t < 0.2 ? t / 0.2 : Math.max(0, 1 - (t - 1.1) / 0.5);
+    ctx.globalAlpha = Math.min(1, a); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `700 ${Math.min(64, W / 8)}px ${FONT}`; ctx.fillStyle = COL.gold; ctx.shadowColor = COL.gold; ctx.shadowBlur = 24;
+    ctx.fillText(run.banner.text, W / 2, H * 0.45); ctx.shadowBlur = 0;
+    ctx.font = `500 14px ${FONT}`; ctx.fillStyle = COL.fg;
+    ctx.fillText(run.level === 3 ? "Faster · meteors incoming" : "Faster", W / 2, H * 0.45 + 40);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+  drawBand();
+}
+
+// Prompt band, drawn last so words slide out from under it.
+function drawBand() {
+  ctx.fillStyle = COL.panel; ctx.fillRect(0, 0, W, BAND);
+  ctx.fillStyle = COL.line; ctx.fillRect(0, BAND - 1, W, 1);
+  if (!run) return;
+  const s = run.steps[run.i];
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left"; ctx.font = `500 11px ${FONT}`; ctx.fillStyle = COL.muted;
+  const tag = run.practice ? "PRACTICE" : !s ? "" : s.k === "phrase" ? "PHRASE" : s.m === "review" ? "REVIEW" : s.k === "test" ? "LEARNING" : "";
+  ctx.fillText(`LV ${run.level}  ·  ${settings.lang.toUpperCase()} → DE  ·  ${tag}`, 14, 16);
+  ctx.textAlign = "right"; ctx.font = `700 14px ${FONT}`;
+  const hearts = "♥".repeat(Math.max(0, run.lives));
+  ctx.fillStyle = COL.bad; ctx.fillText(hearts, W - 14, 16);
+  const hw = ctx.measureText(hearts).width;
+  ctx.fillStyle = COL.fg; ctx.fillText(String(run.score) + (run.combo > 1 ? `  ×${run.combo}` : ""), W - 24 - hw, 16);
+  if (s) {
+    ctx.textAlign = "center";
+    if (s.k === "test" || s.k === "phrase") {
+      const t = promptOf(s.w);
+      ctx.fillStyle = COL.fg; ctx.font = `700 ${fitFont(t, W - 40, s.k === "phrase" ? 26 : 32, 14)}px ${FONT}`;
+      ctx.fillText(t, W / 2, s.k === "phrase" || s.armor ? 44 : 52);
+      if (s.k === "phrase") drawSlots();
+      else if (s.armor) {
+        const cracked = enemies.some(e => e.cracked);
+        ctx.font = `500 12px ${FONT}`; ctx.fillStyle = cracked ? COL[ARTS[weapon]] : COL.shield;
+        ctx.fillText(cracked ? `Now the article: your gun is “${ARTS[weapon]}” · 1 der · 2 die · 3 das` : "Shielded: hit the right word, then hit it with the right article", W / 2, 74);
+      }
+    } else {
+      ctx.fillStyle = COL.gold; ctx.font = `700 20px ${FONT}`;
+      ctx.fillText(s.k === "intro" ? (phrases.includes(s.w) ? "New phrase incoming" : "New word incoming") : "Remember this one", W / 2, 52);
+    }
+  }
+  ctx.fillStyle = COL.line; ctx.fillRect(0, BAND - 3, W, 3);
+  ctx.fillStyle = COL.gold; ctx.fillRect(0, BAND - 3, W * Math.min(1, run.i / Math.max(1, run.steps.length)), 3);
+  if (paused) {
+    ctx.fillStyle = "rgba(11,14,26,.75)"; ctx.fillRect(0, BAND, W, H - BAND);
+    ctx.fillStyle = COL.fg; ctx.textAlign = "center"; ctx.font = `700 ${Math.min(24, W / 18)}px ${FONT}`;
+    ctx.fillText("Paused · click or press Space to continue", W / 2, H / 2);
+  }
+}
+
+// The phrase being built: finished pieces in green, missing ones as blanks.
+function drawSlots() {
+  const parts = run.toks.map((t, i) => i < run.built.length ? t : "_".repeat(Math.max(3, Math.min(8, t.length))));
+  const fs = fitFont(parts.join("  "), W - 40, 16, 10, 500);
+  ctx.font = `500 ${fs}px ${FONT}`; ctx.textAlign = "left";
+  let x = W / 2 - ctx.measureText(parts.join("  ")).width / 2;
+  parts.forEach((p, i) => {
+    ctx.fillStyle = i < run.built.length ? COL.ok : COL.muted;
+    ctx.fillText(p, x, 74); x += ctx.measureText(p + "  ").width;
+  });
+}
+
+function loop(ts) {
+  const dt = Math.min(0.05, (ts - last) / 1000); last = ts;
+  if (run && !paused) update(dt, ts);
+  if (!paused) tickEffects(dt);
+  draw(ts);
+  requestAnimationFrame(loop);
+}
+
+/* ---------- Input ---------- */
+function gameVisible() { return !$("#view-game").hidden; }
+function typing(e) { return /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName); }
+window.addEventListener("keydown", e => {
+  if (!gameVisible() || typing(e)) return;
+  const k = e.key.toLowerCase();
+  if (run && ["arrowleft", "arrowright", " ", "a", "d", "1", "2", "3", "q", "e"].includes(k)) e.preventDefault();
+  if (k === "arrowleft" || k === "a") keys.l = true;
+  if (k === "arrowright" || k === "d") keys.r = true;
+  if (k === " ") { if (paused) { paused = false; return; } keys.fire = true; }
+  if (k === "escape" && run) paused ? (paused = false) : pause();
+  if (run && ["1", "2", "3"].includes(k)) setWeapon(+k - 1);
+  if (run && k === "q") setWeapon(weapon - 1);
+  if (run && k === "e") setWeapon(weapon + 1);
+});
+window.addEventListener("keyup", e => {
+  const k = e.key.toLowerCase();
+  if (k === "arrowleft" || k === "a") keys.l = false;
+  if (k === "arrowright" || k === "d") keys.r = false;
+  if (k === " ") keys.fire = false;
+});
+function localX(e) { const r = cv.getBoundingClientRect(); return (e.clientX - r.left) * (W / r.width); }
+cv.addEventListener("pointermove", e => { if (run) pointerX = localX(e); });
+cv.addEventListener("pointerdown", e => {
+  if (!run) return;
+  if (paused) { paused = false; return; }
+  pointerX = localX(e); pointerDown = true;
+  try { cv.setPointerCapture(e.pointerId); } catch {}
+});
+["pointerup", "pointercancel"].forEach(t => cv.addEventListener(t, () => { pointerDown = false; }));
+cv.addEventListener("wheel", e => { if (!run) return; e.preventDefault(); setWeapon(weapon + (e.deltaY > 0 ? 1 : -1)); }, { passive: false });
+document.querySelectorAll(".wpn").forEach(b => b.addEventListener("click", () => setWeapon(+b.dataset.w)));
+document.addEventListener("visibilitychange", () => { if (document.hidden && run) pause(); });
+window.addEventListener("blur", () => { if (run) pause(); });
+function pause() { paused = true; keys = { l: false, r: false, fire: false }; pointerDown = false; }
+
+/* ---------- Menu ---------- */
+function renderToday() {
+  const t = today();
+  const c = { new: 0, learning: 0, due: 0 };
+  words.filter(w => w.active !== false).forEach(w => { const s = status(w); if (s in c) c[s]++; });
+  const known = knownCount();
+  const pDue = phrases.filter(p => p.active !== false && progress[p.id] && progress[p.id].b > 0 && progress[p.id].due <= t).length;
+  $("#today").innerHTML =
+    `<span class="chip"><b>${Math.min(c.due, MAX_REVIEWS)}</b> reviews due</span>` +
+    `<span class="chip"><b>${Math.min(settings.newPer, c.new + c.learning)}</b> new words this run</span>` +
+    (known >= PHRASE_UNLOCK
+      ? `<span class="chip"><b>${Math.min(pDue, MAX_PHRASE_REVIEWS)}</b> phrases due</span>`
+      : `<span class="chip">Phrases unlock: <b>${known} / ${PHRASE_UNLOCK}</b> known words</span>`);
+}
+$("#set-lang").value = settings.lang;
+$("#set-new").value = String(settings.newPer);
+$("#set-voice").checked = settings.voice;
+$("#set-lang").onchange = e => { settings.lang = e.target.value; saveSettings(); };
+$("#set-new").onchange = e => { settings.newPer = +e.target.value; saveSettings(); renderToday(); };
+$("#set-voice").onchange = e => { settings.voice = e.target.checked; saveSettings(); };
+$("#btn-start").onclick = startRun;
+$("#btn-again").onclick = startRun;
+$("#btn-menu").onclick = () => { $("#over").hidden = true; $("#menu").hidden = false; renderToday(); };
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll(".tab[data-view]").forEach(b => b.onclick = () => {
+  const v = b.dataset.view;
+  document.querySelectorAll(".tab[data-view]").forEach(t => t.classList.toggle("on", t === b));
+  $("#view-game").hidden = v !== "game";
+  $("#view-reg").hidden = v !== "reg";
+  if (v === "reg") { if (run) pause(); renderReg(); } else { resize(); renderToday(); }
+});
+
+/* ---------- Register (words and phrases) ---------- */
+let coll = "words", editing = null, deleting = null;
+const POS = { noun: "noun", verb: "verb", adj: "adjective", adv: "adverb", other: "other" };
+function items() { return coll === "words" ? words : phrases; }
+function saveItems() { coll === "words" ? saveWords() : savePhrases(); }
+
+function setColl(c) {
+  coll = c; editing = deleting = null;
+  document.querySelectorAll(".seg button").forEach(b => b.classList.toggle("on", b.dataset.coll === c));
+  const w = c === "words";
+  $("#reg-title").textContent = w ? "Word register" : "Phrase register";
+  $("#reg-desc").textContent = w
+    ? "Every word the game can show. Edit, add or switch off words here. Changes save in this browser right away. Use Export to keep a backup file."
+    : `Phrases of 2 to ${MAX_PIECES} words that you build by shooting the pieces in order. They appear in runs once you know ${PHRASE_UNLOCK} words.`;
+  $("#add-title").textContent = w ? "Add a word" : "Add a phrase";
+  $("#add-de").placeholder = w ? "German, e.g. die Erfahrung" : "German, e.g. eine Entscheidung treffen";
+  $("#add-note").textContent = w
+    ? "Write nouns with their article (der / die / das) so the game colours them by gender and can use them in article rounds."
+    : "Separate the pieces with spaces. Each piece becomes one target, so keep phrases between 2 and 8 words.";
+  $("#add-pos").hidden = !w;
+  $("#addform").classList.toggle("phr", !w);
+  renderReg();
+}
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => setColl(b.dataset.coll));
+
+function renderReg() {
+  const t = today(), list0 = items();
+  const c = { total: list0.length, on: 0, known: 0, mastered: 0, due: 0 };
+  list0.forEach(w => {
+    const p = progress[w.id];
+    if (w.active !== false) c.on++;
+    if (p && p.b >= 1) c.known++;
+    if (p && p.b >= 4) c.mastered++;
+    if (w.active !== false && p && p.b > 0 && p.due <= t) c.due++;
+  });
+  $("#seg-words").textContent = `Words (${words.length})`;
+  $("#seg-phrases").textContent = `Phrases (${phrases.length})`;
+  $("#reg-stats").innerHTML =
+    `<span class="chip"><b>${c.on}</b> on</span><span class="chip"><b>${c.known}</b> known</span>` +
+    `<span class="chip"><b>${c.mastered}</b> mastered</span><span class="chip"><b>${c.due}</b> due today</span>`;
+
+  const q = $("#reg-search").value.trim().toLowerCase();
+  const f = $("#reg-filter").value;
+  const list = list0.filter(w => {
+    if (q && ![w.de, w.ro, w.en, w.topic].some(x => (x || "").toLowerCase().includes(q))) return false;
+    if (f === "all") return true;
+    if (f === "art") return (progress[w.id]?.art || 0) > 0;
+    const s = status(w);
+    if (f === "known") return s === "known" || s === "mastered" || s === "due";
+    return s === f;
+  });
+  if (!list.length) {
+    $("#reg-body").innerHTML = `<tr><td colspan="8" class="empty">${list0.length ? "Nothing matches this search or filter." : "This register is empty. Add an entry above, import a JSON file, or restore the starter list."}</td></tr>`;
+    return;
+  }
+  $("#reg-body").innerHTML = list.map(w => w.id === editing ? editRow(w) : viewRow(w, t)).join("");
+}
+
+function progressCell(w, t) {
+  const p = progress[w.id];
+  const pips = `<span class="pips">${[1, 2, 3, 4, 5, 6].map(i => `<i class="${p && p.b >= i ? "on" : ""}"></i>`).join("")}</span>`;
+  let label;
+  if (!p) label = "not seen";
+  else if (p.b === 0) label = "learning";
+  else if (p.due <= t) label = "due today";
+  else label = `in ${p.due - t} d`;
+  if (p && p.art) label += ` · ${p.art} art.`;
+  return `${pips}<span class="due ${p && p.b > 0 && p.due <= t ? "now" : ""}">${label}</span>`;
+}
+
+function typeLabel(w) { return coll === "words" ? (POS[w.pos] || w.pos || "") : `${w.de.split(/\s+/).length} pieces`; }
+
+function viewRow(w, t) {
+  const acts = deleting === w.id
+    ? `<span class="pos">Delete?</span><button class="yes" data-act="del-yes">Delete</button><button data-act="del-no">Keep</button>`
+    : `<button data-act="edit">Edit</button><button data-act="del">Delete</button>`;
+  return `<tr data-id="${esc(w.id)}" class="${w.active === false ? "off" : ""}">
+    <td><input type="checkbox" data-act="toggle" aria-label="Use ${esc(w.de)} in the game" ${w.active !== false ? "checked" : ""}></td>
+    <td class="de">${deHTML(w.de)}</td><td>${esc(w.ro)}</td><td>${esc(w.en)}</td>
+    <td class="pos">${esc(typeLabel(w))}</td><td class="pos">${esc(w.topic)}</td>
+    <td>${progressCell(w, t)}</td><td><div class="acts">${acts}</div></td></tr>`;
+}
+
+function editRow(w) {
+  const type = coll === "words"
+    ? `<select id="ed-pos" aria-label="Type">${Object.entries(POS).map(([k, v]) => `<option value="${k}" ${w.pos === k ? "selected" : ""}>${v}</option>`).join("")}</select>`
+    : `<span class="pos">phrase</span>`;
+  return `<tr data-id="${esc(w.id)}">
+    <td></td>
+    <td><input type="text" id="ed-de" value="${esc(w.de)}" aria-label="German"></td>
+    <td><input type="text" id="ed-ro" value="${esc(w.ro)}" aria-label="Romanian"></td>
+    <td><input type="text" id="ed-en" value="${esc(w.en)}" aria-label="English"></td>
+    <td>${type}</td>
+    <td><input type="text" id="ed-topic" value="${esc(w.topic)}" aria-label="Topic"></td>
+    <td><button class="ghost" data-act="reset-one">Reset progress</button></td>
+    <td><div class="acts"><button class="save" data-act="save">Save</button><button data-act="cancel">Cancel</button></div></td></tr>`;
+}
+
+const MAX_PIECES = 8;
+function phraseOk(de) { const n = de.split(/\s+/).length; return n >= 2 && n <= MAX_PIECES; }
+
+$("#reg-body").addEventListener("click", e => {
+  const btn = e.target.closest("[data-act]"); if (!btn) return;
+  const id = btn.closest("tr").dataset.id, w = items().find(x => x.id === id);
+  const act = btn.dataset.act;
+  if (act === "edit") { editing = id; deleting = null; renderReg(); $("#ed-de")?.focus(); }
+  if (act === "cancel") { editing = null; renderReg(); }
+  if (act === "del") { deleting = id; editing = null; renderReg(); }
+  if (act === "del-no") { deleting = null; renderReg(); }
+  if (act === "del-yes") {
+    if (coll === "words") words = words.filter(x => x.id !== id); else phrases = phrases.filter(x => x.id !== id);
+    delete progress[id];
+    saveItems(); saveProgress(); deleting = null; renderReg(); renderToday(); toast(`Deleted ${w.de}.`);
+  }
+  if (act === "reset-one") { delete progress[id]; saveProgress(); toast(`Progress for ${w.de} reset.`); }
+  if (act === "save") {
+    const de = $("#ed-de").value.trim().replace(/\s+/g, " "), ro = $("#ed-ro").value.trim(), en = $("#ed-en").value.trim();
+    if (!de || !(ro || en)) { toast("An entry needs German and at least one translation."); return; }
+    if (coll === "phrases" && !phraseOk(de)) { toast(`A phrase needs 2 to ${MAX_PIECES} pieces separated by spaces.`); return; }
+    Object.assign(w, { de, ro, en, topic: $("#ed-topic").value.trim() });
+    if (coll === "words") w.pos = $("#ed-pos").value;
+    saveItems(); editing = null; renderReg(); toast(`Saved ${de}.`);
+  }
+});
+$("#reg-body").addEventListener("change", e => {
+  if (e.target.dataset.act !== "toggle") return;
+  const w = items().find(x => x.id === e.target.closest("tr").dataset.id);
+  w.active = e.target.checked; saveItems(); renderReg(); renderToday();
+});
+$("#reg-body").addEventListener("keydown", e => {
+  if (!editing) return;
+  if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); document.querySelector('[data-act="save"]').click(); }
+  if (e.key === "Escape") { editing = null; renderReg(); }
+});
+$("#reg-search").addEventListener("input", renderReg);
+$("#reg-filter").addEventListener("change", renderReg);
+
+$("#addform").addEventListener("submit", e => {
+  e.preventDefault();
+  const de = $("#add-de").value.trim().replace(/\s+/g, " "), ro = $("#add-ro").value.trim(), en = $("#add-en").value.trim();
+  if (!de) { toast("Write the German text."); return; }
+  if (!ro && !en) { toast("Add a Romanian or English translation."); return; }
+  if (coll === "phrases" && !phraseOk(de)) { toast(`A phrase needs 2 to ${MAX_PIECES} pieces separated by spaces.`); return; }
+  if (items().some(w => w.de.toLowerCase() === de.toLowerCase())) { toast(`${de} is already in the register.`); return; }
+  const entry = { id: (coll === "words" ? "u" : "q") + Date.now().toString(36), de, ro, en, topic: $("#add-topic").value.trim(), active: true };
+  if (coll === "words") entry.pos = $("#add-pos").value;
+  items().unshift(entry); saveItems();
+  ["#add-de", "#add-ro", "#add-en"].forEach(s => $(s).value = "");
+  $("#add-de").focus(); renderReg(); renderToday(); toast(`Added ${de}.`);
+});
+
+/* Export / import / restore / reset */
+$("#btn-export").onclick = () => {
+  const data = { app: "wortjaeger", version: 2, exported: new Date().toISOString(), words, phrases, progress };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = `wortjaeger-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast("Exported words, phrases and progress.");
+};
+$("#btn-import").onclick = () => $("#file-import").click();
+function mergeInto(target, list, prefix, isWord) {
+  let added = 0, updated = 0;
+  for (const raw of list) {
+    if (!raw || !raw.de || !(raw.ro || raw.en)) continue;
+    const w = { id: raw.id || prefix + Math.random().toString(36).slice(2, 9), de: String(raw.de).trim(), ro: raw.ro || "", en: raw.en || "",
+      topic: raw.topic || "", active: raw.active !== false };
+    if (isWord) w.pos = raw.pos || "other";
+    const i = target.findIndex(x => x.id === w.id || x.de.toLowerCase() === w.de.toLowerCase());
+    if (i >= 0) { w.id = target[i].id; target[i] = w; updated++; } else { target.push(w); added++; }
+  }
+  return [added, updated];
+}
+$("#file-import").onchange = async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    let a = 0, u = 0;
+    const add = ([x, y]) => { a += x; u += y; };
+    if (Array.isArray(data)) add(mergeInto(items(), data, coll === "words" ? "u" : "q", coll === "words"));
+    else {
+      if (!Array.isArray(data.words) && !Array.isArray(data.phrases)) throw new Error("no lists");
+      if (Array.isArray(data.words)) add(mergeInto(words, data.words, "u", true));
+      if (Array.isArray(data.phrases)) add(mergeInto(phrases, data.phrases, "q", false));
+      if (data.progress && typeof data.progress === "object") Object.assign(progress, data.progress);
+    }
+    saveWords(); savePhrases(); saveProgress(); renderReg(); renderToday();
+    toast(`Imported: ${a} added, ${u} updated.`);
+  } catch { toast("That file is not a Wortjäger list (JSON)."); }
+};
+function confirmBox(text, label, onYes) {
+  const slot = $("#confirm-slot");
+  slot.innerHTML = `<div class="confirm"><span>${esc(text)}</span><button class="danger" id="cf-yes">${esc(label)}</button><button class="ghost" id="cf-no">Cancel</button></div>`;
+  $("#cf-yes").onclick = () => { slot.innerHTML = ""; onYes(); };
+  $("#cf-no").onclick = () => { slot.innerHTML = ""; };
+}
+$("#btn-restore").onclick = () => confirmBox("Add back any starter words and phrases that are missing? Your own entries and edits stay.", "Restore", () => {
+  let n = 0;
+  const back = (target, seed) => seed.forEach(s => {
+    if (!target.some(w => w.id === s.id || w.de.toLowerCase() === s.de.toLowerCase())) { target.push({ ...s, active: true }); n++; }
+  });
+  back(words, SEED); back(phrases, SEED_P);
+  saveWords(); savePhrases(); renderReg(); renderToday(); toast(n ? `Restored ${n} entries.` : "The starter list is complete.");
+});
+$("#btn-reset").onclick = () => confirmBox("Erase all learning progress? Words and phrases stay, everything becomes new again.", "Erase progress", () => {
+  progress = {}; saveProgress(); renderReg(); renderToday(); toast("Progress erased.");
+});
+
+/* ---------- Import from a German text (Claude) ---------- */
+const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.130.0/+esm";
+const MODEL = "claude-opus-5-5";
+let found = null; // suggestions waiting for review: { words: [...], phrases: [...] }
+
+const ENTRY = { de: { type: "string" }, ro: { type: "string" }, en: { type: "string" }, topic: { type: "string" }, ex: { type: "string" } };
+const EXTRACT_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["words", "phrases"],
+  properties: {
+    words: { type: "array", items: { type: "object", additionalProperties: false, required: ["de", "ro", "en", "pos", "topic", "ex"],
+      properties: { ...ENTRY, pos: { type: "string", enum: ["noun", "verb", "adj", "adv", "other"] } } } },
+    phrases: { type: "array", items: { type: "object", additionalProperties: false, required: ["de", "ro", "en", "topic", "ex"], properties: ENTRY } }
+  }
+};
+const LEN = { short: "2 to 4 words", mixed: "2 to 8 words, include several longer ones (5 to 8 words)", long: "5 to 8 words" };
+
+function txOptions() {
+  return { nw: +$("#tx-nw").value, np: +$("#tx-np").value, len: $("#tx-len").value, basic: $("#tx-basic").checked };
+}
+function extractPrompt(text, o, forChat) {
+  const known = [...words, ...phrases].map(w => w.de).join("; ");
+  return `You are building flashcards for a learner of German at level B1 whose own languages are Romanian and English.
+
+From the German text below, choose:
+- up to ${o.nw} single words that are most useful for this learner${o.basic ? ", skipping basic A1-A2 vocabulary (sein, haben, gehen, gut, das Haus, ...)" : ""}. Skip names, numbers and words that only make sense in this text.
+- up to ${o.np} phrases: collocations, fixed expressions and useful chunks that appear in the text. Each phrase must be ${LEN[o.len]}.
+
+Rules:
+- Use dictionary form. Nouns: singular with der/die/das ("die Erfahrung"). Verbs: infinitive, with "sich" if reflexive. Adjectives: base form.
+- Phrases: rewrite them in neutral form with the verb as infinitive at the end ("eine Entscheidung treffen", "sich um eine Stelle bewerben"). Separate words with single spaces and use no punctuation, because each word becomes one target the learner shoots in order.
+- "ro" and "en": short translations of the meaning used in the text. Write Romanian with correct diacritics (ă â î ș ț). Translate phrases the same way, e.g. "a lua o decizie" / "to make a decision".
+- "pos": noun, verb, adj, adv or other.
+- "topic": one lowercase English word, e.g. work, health, home, travel, law, society.
+- "ex": the sentence from the text where it appears, shortened to at most 15 words.
+- Leave out anything already in the learner's list.
+
+The learner's list: ${known || "(empty)"}
+${forChat ? `
+Answer with only a JSON object, no other text, in this shape:
+{"words":[{"de":"die Erfahrung","ro":"experiență","en":"experience","pos":"noun","topic":"work","ex":"..."}],"phrases":[{"de":"Erfahrung sammeln","ro":"a acumula experiență","en":"to gain experience","topic":"work","ex":"..."}]}
+` : ""}
+<text>
+${text}
+</text>`;
+}
+
+function txStatus(msg, bad) { const el = $("#tx-status"); el.textContent = msg; el.classList.toggle("bad", !!bad); }
+
+// Clean up suggestions, drop broken ones and mark what the register already has.
+function takeFound(data) {
+  const has = list => new Set(list.map(w => w.de.toLowerCase()));
+  const hw = has(words), hp = has(phrases);
+  const clean = (x, isWord) => {
+    if (!x || typeof x.de !== "string") return null;
+    let de = x.de.trim().replace(/\s+/g, " ");
+    if (!isWord) de = de.replace(/[.,;:!?„“”"«»()]/g, "").replace(/\s+/g, " ").trim();
+    const ro = String(x.ro || "").trim(), en = String(x.en || "").trim();
+    if (!de || !(ro || en) || (!isWord && !phraseOk(de))) return null;
+    const dup = (isWord ? hw : hp).has(de.toLowerCase());
+    return { de, ro, en, pos: isWord ? (POS[x.pos] ? x.pos : "other") : undefined, topic: String(x.topic || "").trim(), ex: String(x.ex || "").trim(), dup, on: !dup };
+  };
+  found = {
+    words: (Array.isArray(data.words) ? data.words : []).map(x => clean(x, true)).filter(Boolean),
+    phrases: (Array.isArray(data.phrases) ? data.phrases : []).map(x => clean(x, false)).filter(Boolean)
+  };
+  if (!found.words.length && !found.phrases.length) { found = null; txStatus("Nothing new found in this text.", true); renderFound(); return; }
+  txStatus(`Found ${found.words.length} words and ${found.phrases.length} phrases. Untick what you don't want, then add them.`);
+  renderFound();
+}
+
+function renderFound() {
+  const box = $("#tx-review");
+  if (!found) { box.innerHTML = ""; return; }
+  const rows = (list, kind) => list.map((x, i) => `<tr class="${x.dup ? "dup" : ""}">
+    <td><input type="checkbox" data-kind="${kind}" data-i="${i}" ${x.on ? "checked" : ""} ${x.dup ? "disabled" : ""} aria-label="Add ${esc(x.de)}"></td>
+    <td><span class="de">${deHTML(x.de)}</span>${x.ex ? `<div class="ex">${esc(x.ex)}</div>` : ""}</td>
+    <td>${esc(x.ro)}</td><td>${esc(x.en)}</td>
+    <td class="pos">${x.dup ? "already in register" : kind === "words" ? esc(POS[x.pos]) : `${x.de.split(" ").length} pieces`}</td></tr>`).join("");
+  const table = (title, list, kind) => list.length ? `<h4>${title} (${list.length})</h4><div class="tablewrap"><table>
+    <thead><tr><th>Add</th><th>German</th><th>Română</th><th>English</th><th>Type</th></tr></thead><tbody>${rows(list, kind)}</tbody></table></div>` : "";
+  const n = [...found.words, ...found.phrases].filter(x => x.on).length;
+  box.innerHTML = table("Words", found.words, "words") + table("Phrases", found.phrases, "phrases") +
+    `<div class="tx-actions"><button class="primary" id="tx-add" ${n ? "" : "disabled"}>Add ${n} selected</button>
+     <button class="ghost" id="tx-all">Select all</button><button class="ghost" id="tx-none">Select none</button><button class="ghost" id="tx-discard">Discard</button></div>`;
+}
+
+$("#tx-review").addEventListener("change", e => {
+  const c = e.target; if (!c.dataset.kind) return;
+  found[c.dataset.kind][+c.dataset.i].on = c.checked; renderFound();
+});
+$("#tx-review").addEventListener("click", e => {
+  const id = e.target.id;
+  if (id === "tx-all" || id === "tx-none") { [...found.words, ...found.phrases].forEach(x => { if (!x.dup) x.on = id === "tx-all"; }); renderFound(); }
+  if (id === "tx-discard") { found = null; txStatus(""); renderFound(); }
+  if (id === "tx-add") {
+    const name = $("#tx-name").value.trim(), stamp = Date.now().toString(36);
+    let nw = 0, np = 0;
+    // New entries go to the front so the next runs teach them first, in the order they appear in the text.
+    const add = (list, target, prefix, isWord) => list.filter(x => x.on && !x.dup).reverse().forEach((x, i) => {
+      const entry = { id: prefix + stamp + i, de: x.de, ro: x.ro, en: x.en, topic: name || x.topic, active: true };
+      if (isWord) { entry.pos = x.pos; nw++; } else np++;
+      target.unshift(entry);
+    });
+    add(found.words, words, "u", true); add(found.phrases, phrases, "q", false);
+    saveWords(); savePhrases(); found = null; renderFound(); renderReg(); renderToday();
+    txStatus(`Added ${nw} words and ${np} phrases${name ? ` with the topic "${name}"` : ""}. They come up as new words in your next runs.`);
+  }
+});
+
+function txText() {
+  const t = $("#tx-text").value.trim();
+  if (!t) { txStatus("Paste a German text first.", true); $("#tx-text").focus(); return null; }
+  return t;
+}
+let apiKey = store.get("wj_api_key", "");
+$("#tx-key").value = apiKey;
+$("#tx-forget").hidden = !apiKey;
+$("#tx-forget").onclick = () => { apiKey = ""; store.set("wj_api_key", ""); $("#tx-key").value = ""; $("#tx-forget").hidden = true; toast("API key removed from this browser."); };
+
+$("#tx-go").onclick = async () => {
+  const text = txText(); if (!text) return;
+  const key = $("#tx-key").value.trim();
+  if (!key) { txStatus("Enter your Anthropic API key, or use a chat assistant (see below).", true); $("#tx-key").focus(); return; }
+  apiKey = key; store.set("wj_api_key", key); $("#tx-forget").hidden = false;
+  const btn = $("#tx-go"); btn.disabled = true; found = null; renderFound();
+  txStatus("Claude is reading the text… this can take a minute for long texts.");
+  let Anthropic;
+  try {
+    ({ default: Anthropic } = await import(SDK_URL));
+    const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
+    const msg = await client.beta.messages.stream({
+      model: MODEL,
+      max_tokens: 32000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "medium", format: { type: "json_schema", schema: EXTRACT_SCHEMA } },
+      messages: [{ role: "user", content: extractPrompt(text, txOptions(), false) }]
+    }).finalMessage();
+    if (msg.stop_reason === "refusal") throw new Error("Claude declined to process this text.");
+    if (msg.stop_reason === "max_tokens") throw new Error("The text is too long to process at once. Split it into parts.");
+    const out = msg.content.filter(b => b.type === "text").map(b => b.text).join("");
+    takeFound(JSON.parse(out));
+  } catch (err) {
+    let m = err && err.message ? err.message : "Something went wrong.";
+    if (!Anthropic) m = "Could not load the Anthropic library. Check your internet connection.";
+    else if (err instanceof Anthropic.AuthenticationError) m = "The API key was not accepted. Check it at console.anthropic.com.";
+    else if (err instanceof Anthropic.PermissionDeniedError) m = "This API key is not allowed to use this model.";
+    else if (err instanceof Anthropic.RateLimitError) m = "Too many requests or no credit left. Wait a moment or check your billing.";
+    else if (err instanceof Anthropic.APIConnectionError) m = "Could not reach api.anthropic.com. Check your internet connection.";
+    else if (err instanceof SyntaxError) m = "Claude's answer could not be read. Try again.";
+    txStatus(m, true);
+  } finally { btn.disabled = false; }
+};
+
+$("#tx-copy").onclick = async () => {
+  const text = txText(); if (!text) return;
+  try { await navigator.clipboard.writeText(extractPrompt(text, txOptions(), true)); txStatus("Prompt copied. Paste it into a chat assistant, then paste the reply below."); }
+  catch { txStatus("Could not copy to the clipboard. Your browser blocked it.", true); }
+};
+$("#tx-read").onclick = () => {
+  const raw = $("#tx-reply").value, a = raw.indexOf("{"), b = raw.lastIndexOf("}");
+  try {
+    if (a < 0 || b < a) throw new Error();
+    takeFound(JSON.parse(raw.slice(a, b + 1)));
+    $("#tx-reply").value = "";
+  } catch { txStatus("That reply has no readable JSON. Copy the assistant's whole answer and try again.", true); }
+};
+
+let toastTimer = 0;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2800);
+}
+
+// The tower and platformer pages (other tabs) share these records: reload them so a save here never overwrites theirs.
+window.addEventListener("storage", e => {
+  if (e.key === "wj_progress") progress = store.get("wj_progress", {});
+  else if (e.key === "wj_words") words = store.get("wj_words", words);
+  else if (e.key === "wj_settings") settings = Object.assign(settings, store.get("wj_settings", {}));
+  else return;
+  if (!run) { renderToday(); if (!$("#view-reg").hidden) renderReg(); }
+});
+
+/* ---------- Boot ---------- */
+resize(); renderToday(); setColl("words");
+if (location.hash === "#reg") $("#tab-reg").click();
+requestAnimationFrame(t => { last = t; loop(t); });
+</script>
+</body>
+</html>
