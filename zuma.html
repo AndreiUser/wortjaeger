@@ -78,6 +78,9 @@ kbd { font: 500 11px/1 var(--f-mono); padding: 3px 5px; border-radius: 4px; bord
         <label>New words per run
           <select id="set-new"><option>3</option><option>5</option><option>8</option><option>12</option></select>
         </label>
+        <label>Track
+          <select id="set-track"><option value="-1">A new one each level</option></select>
+        </label>
         <label><input type="checkbox" id="set-voice"> Speak German</label>
       </div>
       <button class="big" id="btn-start">Break the chain</button>
@@ -123,6 +126,86 @@ const BL = 1.0, BH = 0.5, D = BL + 0.04; // brick length along the track, height
 const FROG = { x: 8, y: 4.5 };
 let PX = [], PY = [], PL = [], END = 0, VISIBLE = 0; // dense samples of the track, the length walked to each, total, where it enters the field
 // Each track gives the shooter's place and its path, from off the field to the hole; corners of a path get rounded.
+// Same random numbers every frame, so stars, trees and dunes stay where they are.
+function seeded(n) { let x = n * 9301 + 49297; return () => (x = (x * 9301 + 49297) % 233280) / 233280; }
+// Points on an ellipse from angle a0 to a1 (radians), with the radius scaled by f(t) for t from 0 to 1.
+function arc(cx, cy, rx, ry, a0, a1, n = 120, f = () => 1) {
+  const out = [];
+  for (let i = 0; i <= n; i++) { const t = i / n, a = a0 + (a1 - a0) * t; out.push([cx + rx * f(t) * Math.cos(a), cy + ry * f(t) * Math.sin(a)]); }
+  return out;
+}
+// A theme colours the field and the track and may draw scenery behind the track (in pixels; T is one tile).
+const NIGHT = { bg: COL.bg, grid: "rgba(138,147,179,.07)", track: "#1b2340", line: "rgba(255,201,74,.10)", hole: COL.line };
+const THEMES = {
+  ocean: { bg: "#06182b", grid: "rgba(120,200,255,.05)", track: "#0f3354", line: "rgba(150,230,255,.22)", hole: "#2b6a8f",
+    deco(now) {
+      ctx.strokeStyle = "rgba(110,190,255,.09)"; ctx.lineWidth = Math.max(1, T * 0.05);
+      for (let r = 0.5; r < ROWS; r += 1.1) {
+        ctx.beginPath();
+        for (let x = 0; x <= COLS; x += 0.25) ctx[x ? "lineTo" : "moveTo"](x * T, (r + Math.sin(x * 1.3 + now / 900 + r) * 0.12) * T);
+        ctx.stroke();
+      }
+      const rnd = seeded(3);
+      ctx.fillStyle = "rgba(170,225,255,.16)";
+      for (let i = 0; i < 26; i++) {
+        const x = rnd() * COLS, sp = 0.25 + rnd() * 0.35, y = ROWS - ((now / 1000 * sp + rnd() * ROWS) % (ROWS + 1)) + 0.5;
+        ctx.beginPath(); ctx.arc(x * T, y * T, T * (0.04 + rnd() * 0.07), 0, 6.283); ctx.fill();
+      }
+    } },
+  desert: { bg: "#21150a", grid: "rgba(255,200,120,.05)", track: "#4a3218", line: "rgba(255,214,140,.25)", hole: "#8a5a2a",
+    deco() {
+      ctx.fillStyle = "rgba(255,190,90,.10)";
+      ctx.beginPath(); ctx.arc(COLS * 0.82 * T, 2.6 * T, T * 1.3, 0, 6.283); ctx.fill();
+      ctx.fillStyle = "rgba(255,170,80,.06)";
+      for (const [x, b, hgt] of [[COLS * 0.2, 8.6, 2.6], [COLS * 0.45, 9.2, 3.6], [COLS * 0.7, 8.9, 2.2]]) {
+        ctx.beginPath(); ctx.moveTo((x - hgt) * T, b * T); ctx.lineTo(x * T, (b - hgt) * T); ctx.lineTo((x + hgt) * T, b * T); ctx.fill();
+      }
+      ctx.strokeStyle = "rgba(255,190,110,.07)"; ctx.lineWidth = Math.max(1, T * 0.05);
+      for (let r = 1.6; r < ROWS; r += 1.9) {
+        ctx.beginPath();
+        for (let x = 0; x <= COLS; x += 0.25) ctx[x ? "lineTo" : "moveTo"](x * T, (r + Math.sin(x * 0.7 + r * 2) * 0.35) * T);
+        ctx.stroke();
+      }
+    } },
+  forest: { bg: "#0a1a10", grid: "rgba(140,230,160,.05)", track: "#183a22", line: "rgba(190,255,170,.20)", hole: "#3b6b45",
+    deco() {
+      const rnd = seeded(7);
+      for (let i = 0; i < 34; i++) {
+        const x = rnd() * COLS, y = rnd() * (ROWS + 0.6), hgt = 0.6 + rnd() * 0.8;
+        ctx.fillStyle = `rgba(80,${150 + (rnd() * 70 | 0)},95,.10)`;
+        ctx.beginPath(); ctx.moveTo((x - hgt * 0.45) * T, y * T); ctx.lineTo(x * T, (y - hgt) * T); ctx.lineTo((x + hgt * 0.45) * T, y * T); ctx.fill();
+      }
+      ctx.fillStyle = "rgba(220,255,140,.35)";
+      for (let i = 0; i < 12; i++) { ctx.globalAlpha = 0.3 + 0.3 * Math.sin(performance.now() / 500 + i * 1.7); ctx.fillRect(rnd() * COLS * T, rnd() * ROWS * T, 2, 2); }
+      ctx.globalAlpha = 1;
+    } },
+  ice: { bg: "#0a1820", grid: "rgba(180,240,255,.06)", track: "#16384a", line: "rgba(210,250,255,.30)", hole: "#4d8aa3",
+    deco() {
+      const rnd = seeded(11);
+      ctx.strokeStyle = "rgba(190,240,255,.10)"; ctx.lineWidth = Math.max(1, T * 0.04);
+      for (let i = 0; i < 16; i++) {
+        const x = rnd() * COLS * T, y = rnd() * ROWS * T, r = T * (0.2 + rnd() * 0.35);
+        ctx.beginPath();
+        for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; ctx.moveTo(x - Math.cos(a) * r, y - Math.sin(a) * r); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+        ctx.stroke();
+      }
+    } },
+  space: { bg: "#05040d", grid: "rgba(0,0,0,0)", track: "#221a40", line: "rgba(200,180,255,.25)", hole: "#6a52b8",
+    deco(now) {
+      const rnd = seeded(5);
+      for (let i = 0; i < 90; i++) {
+        const x = rnd() * COLS * T, y = rnd() * ROWS * T, b = rnd();
+        ctx.fillStyle = `rgba(255,255,255,${0.15 + 0.35 * b * (0.7 + 0.3 * Math.sin(now / 700 + i))})`;
+        ctx.fillRect(x, y, b > 0.85 ? 2 : 1, b > 0.85 ? 2 : 1);
+      }
+      for (const pl of PLANETS) {
+        const g = ctx.createRadialGradient((pl.x - pl.r * 0.3) * T, (pl.y - pl.r * 0.3) * T, 0, pl.x * T, pl.y * T, pl.r * T);
+        g.addColorStop(0, pl.c[0]); g.addColorStop(1, pl.c[1]);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(pl.x * T, pl.y * T, pl.r * T, 0, 6.283); ctx.fill();
+      }
+    } },
+};
+let THEME = NIGHT, PLANETS = [];
 const TRACKS = [
   { name: "Horseshoe", build(w, h) {
     const m = 1.3;
@@ -144,6 +227,49 @@ const TRACKS = [
     const a = 1.2, b = 3.0;
     return { frog: [w / 2, h / 2 - 0.4], path: [[-1.5, a], [w - a, a], [w - a, h - a], [a, h - a], [a, b], [w - b - 0.6, b], [w - b - 0.6, h - b], [w / 2 - 1.6, h - b]] };
   } },
+  // Ocean: two rows of waves, out along the top and back along the bottom
+  { name: "Ocean waves", theme: "ocean", build(w, h) {
+    const path = [[-1.5, 1.7]];
+    for (let x = 0; x <= w - 1.4; x += 0.25) path.push([x, 1.7 + Math.sin(x * 1.1) * 0.55]);
+    for (let x = w - 1.4; x >= 3; x -= 0.25) path.push([x, h - 1.7 + Math.sin(x * 1.1 + 1) * 0.55]);
+    return { frog: [w / 2, h / 2 - 0.3], path };
+  } },
+  // Desert: a zigzag of dunes along the top, down the far side and straight back
+  { name: "Desert dunes", theme: "desert", build(w, h) {
+    const path = [[-1.5, 1.1]], n = Math.max(3, Math.round((w - 2.4) / 2.6));
+    for (let i = 0; i <= n; i++) path.push([1.2 + (w - 2.4) * i / n, i % 2 ? 3.2 : 1.1]);
+    path.push([w - 1.2, h - 1.2], [3, h - 1.2]);
+    return { frog: [w / 2, h / 2 + 0.6], path };
+  } },
+  // Forest: up and down between the trees on the left, across the top, and the same on the right
+  { name: "Forest path", theme: "forest", build(w, h) {
+    const t = 1.3, b = h - 1.3, g = Math.min(2.2, (w / 2 - 2.8) / 2);
+    const xs = [1.2, 1.2 + g, 1.2 + 2 * g, w - 1.2 - 2 * g, w - 1.2 - g, w - 1.2], path = [[xs[0], h + 1.5]];
+    xs.forEach((x, i) => { const up = i % 2 === 0; path.push([x, up ? b : t], [x, up ? t : b]); });
+    path.splice(1, 1);
+    path[path.length - 1] = [xs[5], b - 1.4];
+    return { frog: [w / 2, h / 2 + 0.4], path };
+  } },
+  // Ice: a diamond that winds inwards, with sharp crystal corners
+  { name: "Ice crystal", theme: "ice", build(w, h) {
+    const cx = w / 2, cy = h / 2, a = w / 2 - 1.1, b = h / 2 - 0.7, TURNS = 1.6, path = [];
+    const at = th => {
+      const f = 1 - 0.5 * (th - Math.PI) / (TURNS * 6.283), c = Math.cos(th), sn = Math.sin(th), k = Math.abs(c) + Math.abs(sn);
+      return [cx + a * f * c / k, cy + b * f * sn / k];
+    };
+    const [x0, y0] = at(Math.PI);
+    for (let i = 0; i <= 30; i++) path.push([-1.5 + (x0 + 1.5) * i / 30, y0]);
+    for (let i = 1; i <= 1600; i++) path.push(at(Math.PI + TURNS * 6.283 * i / 1600));
+    return { frog: [cx, cy], path, smooth: false };
+  } },
+  // Space: three quarters round the left planet, across the bottom, then spiralling into the right one
+  { name: "Two planets", theme: "space", build(w, h) {
+    const ry = h / 2 - 1.2, rx = Math.min(3.3, w * 0.25 - 1.2), L = [w * 0.25, h / 2 - 0.2], R = [w * 0.75, h / 2 - 0.2];
+    const path = [[L[0] - rx, h + 1.5], ...arc(L[0], L[1], rx, ry, Math.PI, Math.PI * 2.5),
+      ...arc(R[0], R[1], rx, ry, Math.PI / 2, -Math.PI * 1.75, 300, t => 1 - 0.62 * t)];
+    PLANETS = [{ x: L[0], y: L[1], r: Math.min(rx, ry) * 0.45, c: ["#5a7bd8", "#1a2350"] }, { x: R[0], y: R[1], r: Math.min(rx, ry) * 0.2, c: ["#e0785a", "#4a1a20"] }];
+    return { frog: [w / 2, h / 2 - 0.6], path, smooth: false };
+  } },
 ];
 // Straight lines with each corner swapped for a curve of radius r.
 function roundPath(pts, r = 0.9) {
@@ -155,17 +281,22 @@ function roundPath(pts, r = 0.9) {
     for (let j = 0; j <= 12; j++) { const t = j / 12, u = 1 - t; out.push([u * u * sx + 2 * u * t * px + t * t * ex, u * u * sy + 2 * u * t * py + t * t * ey]); }
   }
   out.push(pts[pts.length - 1]);
-  // fill the straight parts with points every 0.1 tile, so the edge of the field can be found on them
-  const dense = [out[0]];
-  for (let i = 1; i < out.length; i++) {
-    const [ax, ay] = out[i - 1], [bx, by] = out[i], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 0.1));
+  return out;
+}
+// Fill straight parts with points every 0.1 tile, so the edge of the field can be found on them.
+function densify(pts) {
+  const dense = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, ay] = pts[i - 1], [bx, by] = pts[i], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 0.1));
     for (let j = 1; j <= n; j++) dense.push([ax + (bx - ax) * j / n, ay + (by - ay) * j / n]);
   }
   return dense;
 }
+let curTrack = 0;
 function setTrack(n) {
-  const t = TRACKS[n % TRACKS.length].build(COLS, ROWS), pts = t.smooth === false ? t.path : roundPath(t.path);
-  FROG.x = t.frog[0]; FROG.y = t.frog[1];
+  curTrack = n;
+  const t = TRACKS[n % TRACKS.length].build(COLS, ROWS), pts = densify(t.smooth === false ? t.path : roundPath(t.path));
+  FROG.x = t.frog[0]; FROG.y = t.frog[1]; THEME = THEMES[TRACKS[n % TRACKS.length].theme] || NIGHT;
   PX = pts.map(p => p[0]); PY = pts.map(p => p[1]); PL = [0];
   for (let i = 1; i < PX.length; i++) PL.push(PL[i - 1] + Math.hypot(PX[i] - PX[i - 1], PY[i] - PY[i - 1]));
   END = PL[PL.length - 1];
@@ -253,7 +384,7 @@ function resize() {
   const cols = Math.max(8, W / T);
   if (Math.abs(cols - COLS) < 0.01 && END) return;
   // a new screen shape: rebuild the track to fill it and keep the chain where it was along it
-  const old = END; COLS = cols; setTrack(run?.track ?? 0);
+  const old = END; COLS = cols; setTrack(curTrack);
   if (old) for (const b of balls) { b.s *= END / old; b.ds *= END / old; }
 }
 window.addEventListener("resize", resize);
@@ -265,7 +396,7 @@ function startRun() {
   audioOn();
   const queue = buildQueue();
   run = { queue, practice: queue.every(s => s.m === "retry"), lives: 3, score: 0, combo: 0, chain: 0, maxCombo: 0, ok: 0, bad: 0,
-    level: 0, cleared: 0, learned: [], weak: new Set(), seen: [], phase: "ready", teach: [], ti: 0,
+    level: 0, trackStart: store.get("wk_track", 0) % TRACKS.length, cleared: 0, learned: [], weak: new Set(), seen: [], phase: "ready", teach: [], ti: 0,
     steps: {}, pal: [], ammo: [], reveal: null, done: 0, total: queue.filter(s => s.k === "test").length };
   balls = []; shots = []; parts = []; floats = []; gt = 0; setPaused(false); goFull();
   $("#menu").hidden = true; $("#over").hidden = true; $("#hud").hidden = false; $("#btn-pause").hidden = false;
@@ -291,6 +422,7 @@ function nextLevel() {
   const known = shuffle([...run.seen, ...words.filter(w => w.active !== false && progress[w.id]?.seen)]);
   for (const c of known) { if (pal.length >= Math.max(3, Math.min(want, 4))) break; if (!clash(c)) pal.push(c); }
   run.pal = pal.slice(0, 6);
+  balls = []; setTrack(run.track = trackFor(run.level));
   run.phase = run.teach.length ? "teach" : "ready";
   if (run.phase === "teach") teachWord();
   renderQuiz();
@@ -311,9 +443,12 @@ function nextTeach() {
   if (++run.ti < run.teach.length) teachWord(); else run.phase = "ready";
   renderQuiz();
 }
+function trackFor(level) {
+  return settings.track >= 0 ? settings.track % TRACKS.length : (run.trackStart + level - 1) % TRACKS.length;
+}
 function startLevel() {
+  if (!(settings.track >= 0)) store.set("wk_track", (run.track + 1) % TRACKS.length);
   for (const w of run.pal) if (!run.seen.includes(w)) run.seen.push(w);
-  setTrack(run.track = (run.level - 1) % TRACKS.length);
   makeChain();
   run.phase = "play"; run.ammo = [newAmmo(), newAmmo()]; run.ammo[0].at = gt;
   floatText(FROG.x, FROG.y - 1.2, `LEVEL ${run.level} · ${TRACKS[run.track].name}`, COL.gold, 30); sfx.level();
@@ -321,7 +456,7 @@ function startLevel() {
 }
 // The whole chain waits behind the start of the track and rolls in fast.
 function makeChain() {
-  const n = 14 + 4 * run.level, k = run.pal.length, list = [];
+  const n = Math.min(14 + 4 * run.level, Math.floor(END * 0.8 / D)), k = run.pal.length, list = [];
   const need = run.pal.flatMap((w, i) => run.steps[w.id] ? [i, i, i] : [i]); // every word appears, tested ones more
   let prev = -1, runLen = 0;
   for (let i = 0; i < n; i++) {
@@ -529,19 +664,20 @@ function aimTarget() {
 function draw(now) {
   ctx.save();
   if (shake > 0) ctx.translate((Math.random() - .5) * 10 * shake, (Math.random() - .5) * 10 * shake);
-  ctx.fillStyle = COL.bg; ctx.fillRect(-10, -10, W + 20, H + 20);
+  ctx.fillStyle = THEME.bg; ctx.fillRect(-10, -10, W + 20, H + 20);
+  if (THEME.deco) THEME.deco(now);
   // subtle dot grid
-  ctx.fillStyle = "rgba(138,147,179,.07)";
+  ctx.fillStyle = THEME.grid;
   for (let c = 0; c <= COLS; c++) for (let r = 0; r <= ROWS; r++) ctx.fillRect(c * T - 1, r * T - 1, 2, 2);
   // track
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   ctx.beginPath(); for (let i = 0; i < PX.length; i++) ctx[i ? "lineTo" : "moveTo"](PX[i] * T, PY[i] * T);
-  ctx.strokeStyle = "#1b2340"; ctx.lineWidth = T * BH * 1.5; ctx.stroke();
-  ctx.strokeStyle = "rgba(255,201,74,.10)"; ctx.lineWidth = Math.max(1, T * 0.03); ctx.setLineDash([T * .15, T * .2]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = THEME.track; ctx.lineWidth = T * BH * 1.5; ctx.stroke();
+  ctx.strokeStyle = THEME.line; ctx.lineWidth = Math.max(1, T * 0.03); ctx.setLineDash([T * .15, T * .2]); ctx.stroke(); ctx.setLineDash([]);
   // the hole, glowing red when the chain is close
   const hp = pos(END), head = balls.length ? balls[balls.length - 1].s : 0, danger = run && run.phase === "play" && END - head < 6;
   ctx.beginPath(); ctx.arc(hp.x * T, hp.y * T, T * 0.42, 0, 6.283); ctx.fillStyle = "#05070e"; ctx.fill();
-  ctx.lineWidth = 3; ctx.strokeStyle = danger ? COL.bad : COL.line;
+  ctx.lineWidth = 3; ctx.strokeStyle = danger ? COL.bad : THEME.hole;
   if (danger) { ctx.shadowColor = COL.bad; ctx.shadowBlur = 14 + Math.sin(now / 120) * 8; }
   ctx.stroke(); ctx.shadowBlur = 0;
 
@@ -643,8 +779,7 @@ function renderQuiz() {
       <div class="q-acts"><button class="primary" data-act="next">Got it <kbd>Space</kbd></button><button class="ghost" data-act="say">Hear it again</button></div>`);
   }
   if (run.phase === "ready") {
-    const n = (run.level - 1) % TRACKS.length;
-    return show("card", `<h3>Level ${run.level} · ${TRACKS[n].name} · ${run.pal.length} words in the chain</h3>
+    return show("card", `<h3>Level ${run.level} · ${TRACKS[run.track].name} · ${run.pal.length} words in the chain</h3>
       <div class="pal">${run.pal.map((w, c) => `<span><i style="background:${BALL[c]}"></i>${deHTML(w.de)}</span>`).join("")}</div>
       <p class="hint" style="margin-top:10px">Your brick shows a word in ${settings.lang === "ro" ? "Romanian" : "English"}: shoot it next to its German colour.</p>
       <div class="q-acts"><button class="primary" data-act="start">Start level ${run.level} <kbd>Space</kbd></button></div>`);
@@ -734,6 +869,11 @@ $("#btn-start").onclick = startRun;
 $("#btn-again").onclick = startRun;
 $("#btn-menu").onclick = () => { $("#over").hidden = true; $("#menu").hidden = false; $("#today").innerHTML = todayChips(); };
 bindSettings(() => $("#today").innerHTML = todayChips());
+// Track choice: -1 takes turns; otherwise always that track. The menu shows it behind the overlay.
+$("#set-track").insertAdjacentHTML("beforeend", TRACKS.map((t, i) => `<option value="${i}">${t.name}</option>`).join(""));
+$("#set-track").value = String(settings.track ?? -1);
+$("#set-track").onchange = e => { settings.track = +e.target.value; saveSettings(); setTrack(settings.track >= 0 ? settings.track : store.get("wk_track", 0)); };
+setTrack(settings.track >= 0 ? settings.track : store.get("wk_track", 0) % TRACKS.length);
 loadWords().then(ok => {
   if (!ok) { $("#today").innerHTML = `<span class="chip">Could not load the word list: check the connection and reload</span>`; $("#btn-start").disabled = true; return; }
   $("#today").innerHTML = todayChips();
